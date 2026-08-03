@@ -1,0 +1,9 @@
+DATA DICTIONARY - SUPPLIER RECOMMENDATION SYSTEM
+
+1. supplier: The name of the company providing the part.
+2. part_number: Unique ID for the item being ordered.
+3. avg_lead_time: Average days from order to delivery (Lower is better).
+4. reliability_score: Percentage of on-time/correct deliveries (Higher is better).
+5. total_order_cost: Quantity multiplied by unit price.
+6. quality_impact_score: A calculated score (0-100) based on past quality incidents.
+7. consistency_index: Reliability divided by Lead Time (Higher = more stable supplier).
