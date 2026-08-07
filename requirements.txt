@@ -3,3 +3,7 @@ numpy
 matplotlib
 scikit-learn
 openpyxl
+pymongo
+python-dotenv
+streamlit
+plotly
