@@ -1,0 +1,91 @@
+month,product_category,product_name,search_volume,sales_count,growth_rate,trend_score,trend_level,data_source
+2026-03,Electronics,Phone Charger,68000,7900,3,68,Medium,Google Trends
+2026-04,Electronics,Phone Charger,70000,8200,4,70,Medium,Google Trends
+2026-05,Electronics,Phone Charger,71500,8500,4,72,Medium,Google Trends
+2026-06,Electronics,Phone Charger,73000,8700,3,73,Medium,Google Trends
+2026-07,Electronics,Phone Charger,74500,8950,3,74,Medium,Google Trends
+2026-08,Electronics,Phone Charger,76000,9200,4,76,Medium,Google Trends
+2026-03,Electronics,Power Bank,80000,9100,10,80,Low,Google Trends
+2026-04,Electronics,Power Bank,76000,8500,8,76,Low,Google Trends
+2026-05,Electronics,Power Bank,71000,7900,5,72,Low,Google Trends
+2026-06,Electronics,Power Bank,66000,7200,2,67,Low,Google Trends
+2026-07,Electronics,Power Bank,61000,6500,-3,61,Low,Google Trends
+2026-08,Electronics,Power Bank,59000,6100,-5,58,Low,Google Trends
+2026-03,Electronics,Wireless Earbuds,72000,8400,8,72,High,Google Trends
+2026-04,Electronics,Wireless Earbuds,77000,9100,10,76,High,Google Trends
+2026-05,Electronics,Wireless Earbuds,83000,9900,12,81,High,Google Trends
+2026-06,Electronics,Wireless Earbuds,91000,11100,15,87,High,Google Trends
+2026-07,Electronics,Wireless Earbuds,98000,12400,18,92,High,Google Trends
+2026-08,Electronics,Wireless Earbuds,104000,13600,20,96,High,Google Trends
+2026-03,Food,Organic Tea,54000,6700,8,74,Low,Google Trends
+2026-04,Food,Organic Tea,50000,6100,5,69,Low,Google Trends
+2026-05,Food,Organic Tea,47000,5600,2,65,Low,Google Trends
+2026-06,Food,Organic Tea,43000,5000,-1,60,Low,Google Trends
+2026-07,Food,Organic Tea,40000,4600,-4,55,Low,Google Trends
+2026-08,Food,Organic Tea,38000,4300,-6,52,Low,Google Trends
+2026-03,Food,Plant-Based Milk,52000,6200,2,66,Medium,Google Trends
+2026-04,Food,Plant-Based Milk,53500,6400,3,68,Medium,Google Trends
+2026-05,Food,Plant-Based Milk,54800,6600,2,69,Medium,Google Trends
+2026-06,Food,Plant-Based Milk,56000,6800,2,70,Medium,Google Trends
+2026-07,Food,Plant-Based Milk,57500,7050,3,72,Medium,Google Trends
+2026-08,Food,Plant-Based Milk,59000,7300,3,74,Medium,Google Trends
+2026-03,Food,Protein Snacks,43000,5200,5,61,High,Google Trends
+2026-04,Food,Protein Snacks,46000,5700,7,65,High,Google Trends
+2026-05,Food,Protein Snacks,51000,6400,9,70,High,Google Trends
+2026-06,Food,Protein Snacks,57000,7300,11,77,High,Google Trends
+2026-07,Food,Protein Snacks,64000,8200,14,84,High,Google Trends
+2026-08,Food,Protein Snacks,70000,9100,16,90,High,Google Trends
+2026-03,Machinery,Electric Motor,42000,3900,2,64,Medium,Google Trends
+2026-04,Machinery,Electric Motor,43500,4050,3,66,Medium,Google Trends
+2026-05,Machinery,Electric Motor,45000,4250,3,68,Medium,Google Trends
+2026-06,Machinery,Electric Motor,46500,4450,3,70,Medium,Google Trends
+2026-07,Machinery,Electric Motor,48000,4620,3,71,Medium,Google Trends
+2026-08,Machinery,Electric Motor,50000,4850,4,73,Medium,Google Trends
+2026-03,Machinery,Industrial Robot,31000,2600,2,49,High,Google Trends
+2026-04,Machinery,Industrial Robot,34000,2900,4,54,High,Google Trends
+2026-05,Machinery,Industrial Robot,39000,3500,7,62,High,Google Trends
+2026-06,Machinery,Industrial Robot,45000,4200,10,70,High,Google Trends
+2026-07,Machinery,Industrial Robot,52000,5100,14,79,High,Google Trends
+2026-08,Machinery,Industrial Robot,61000,6300,18,88,High,Google Trends
+2026-03,Machinery,Mini Cnc Kit,54000,5000,12,85,Low,Google Trends
+2026-04,Machinery,Mini Cnc Kit,45000,3900,8,73,Low,Google Trends
+2026-05,Machinery,Mini Cnc Kit,38000,3100,3,62,Low,Google Trends
+2026-06,Machinery,Mini Cnc Kit,32000,2500,-2,53,Low,Google Trends
+2026-07,Machinery,Mini Cnc Kit,28000,2100,-5,46,Low,Google Trends
+2026-08,Machinery,Mini Cnc Kit,26000,1900,-8,43,Low,Google Trends
+2026-03,Pharma,Electrolyte Powder,43000,5200,2,60,Medium,Google Trends
+2026-04,Pharma,Electrolyte Powder,44500,5400,3,62,Medium,Google Trends
+2026-05,Pharma,Electrolyte Powder,46000,5600,3,64,Medium,Google Trends
+2026-06,Pharma,Electrolyte Powder,47500,5800,3,66,Medium,Google Trends
+2026-07,Pharma,Electrolyte Powder,49000,6000,3,68,Medium,Google Trends
+2026-08,Pharma,Electrolyte Powder,50500,6250,3,70,Medium,Google Trends
+2026-03,Pharma,First Aid Kit,59000,7200,9,83,Low,Google Trends
+2026-04,Pharma,First Aid Kit,52000,6200,6,75,Low,Google Trends
+2026-05,Pharma,First Aid Kit,46000,5400,2,67,Low,Google Trends
+2026-06,Pharma,First Aid Kit,41000,4700,-1,60,Low,Google Trends
+2026-07,Pharma,First Aid Kit,37000,4200,-4,54,Low,Google Trends
+2026-08,Pharma,First Aid Kit,35000,3900,-7,51,Low,Google Trends
+2026-03,Pharma,Vitamin D Supplement,52000,6800,3,63,High,Google Trends
+2026-04,Pharma,Vitamin D Supplement,56000,7300,5,67,High,Google Trends
+2026-05,Pharma,Vitamin D Supplement,61000,8000,7,73,High,Google Trends
+2026-06,Pharma,Vitamin D Supplement,65000,8500,8,77,High,Google Trends
+2026-07,Pharma,Vitamin D Supplement,70000,9300,10,82,High,Google Trends
+2026-08,Pharma,Vitamin D Supplement,76000,10100,12,88,High,Google Trends
+2026-03,Textiles,Moisture Wicking Fabric,42000,4700,4,59,High,Google Trends
+2026-04,Textiles,Moisture Wicking Fabric,47000,5400,7,66,High,Google Trends
+2026-05,Textiles,Moisture Wicking Fabric,53000,6300,10,74,High,Google Trends
+2026-06,Textiles,Moisture Wicking Fabric,61000,7500,13,83,High,Google Trends
+2026-07,Textiles,Moisture Wicking Fabric,69000,8800,16,91,High,Google Trends
+2026-08,Textiles,Moisture Wicking Fabric,76000,9900,18,96,High,Google Trends
+2026-03,Textiles,Organic Cotton Fabric,50000,6100,2,64,Medium,Google Trends
+2026-04,Textiles,Organic Cotton Fabric,51500,6250,3,66,Medium,Google Trends
+2026-05,Textiles,Organic Cotton Fabric,53000,6450,3,68,Medium,Google Trends
+2026-06,Textiles,Organic Cotton Fabric,54500,6650,3,70,Medium,Google Trends
+2026-07,Textiles,Organic Cotton Fabric,56000,6850,3,72,Medium,Google Trends
+2026-08,Textiles,Organic Cotton Fabric,57500,7050,3,74,Medium,Google Trends
+2026-03,Textiles,Recycled Cotton Hoodie,69000,8700,11,93,Low,Google Trends
+2026-04,Textiles,Recycled Cotton Hoodie,61000,7300,7,84,Low,Google Trends
+2026-05,Textiles,Recycled Cotton Hoodie,54000,6200,3,75,Low,Google Trends
+2026-06,Textiles,Recycled Cotton Hoodie,48000,5400,-1,68,Low,Google Trends
+2026-07,Textiles,Recycled Cotton Hoodie,43000,4700,-4,61,Low,Google Trends
+2026-08,Textiles,Recycled Cotton Hoodie,39000,4100,-7,55,Low,Google Trends
