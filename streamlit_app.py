@@ -1,5 +1,7 @@
 import hashlib
 import io
+import secrets
+import string
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -224,6 +226,22 @@ def inject_custom_css():
             color: var(--app-muted);
         }
 
+        .search-page-title {
+            margin-bottom: 0.35rem;
+        }
+
+        .search-page-title h1 {
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: 2rem !important;
+            line-height: 1.12 !important;
+        }
+
+        .search-page-title p {
+            margin: 0.25rem 0 0 0;
+            color: var(--app-muted);
+        }
+
         h1, h2, h3 {
             color: var(--app-text);
             letter-spacing: 0;
@@ -388,7 +406,7 @@ PAGE_DETAILS = {
     "Supplier Trend": ("📈", "Trend", "Category-specific product trend, current demand, and up/down trend products."),
     "Future Prediction": ("🔮", "Future Prediction", "Future demand, supplier risk prediction, and what-if improvement analysis."),
     "User Rating": ("⭐", "User Rating", "Review user feedback submitted after supplier experience."),
-    "Manage Users": ("👥", "Manage Users", "View and manage system user accounts."),
+    "Manage Accounts": ("👥", "Manage Accounts", "Manage user accounts, supplier requests, and supplier verification codes."),
     "Best Suppliers": ("🏠", "Best Suppliers", "Search suppliers quickly or view top supplier options."),
     "Find Supplier": ("🔎", "Find Supplier", "Enter requirements and receive ranked supplier recommendations."),
     "Rate Supplier": ("⭐", "Rate Supplier", "Submit feedback after selecting and using a supplier."),
@@ -569,8 +587,10 @@ DATA_EXPORT_KEYS = [
     "hot_suppliers",
     "recommendation_logs",
     "activity_logs",
+    "supplier_verification_codes",
 ]
 HOT_SUPPLIERS_COLLECTION = COLLECTIONS.get("hot_suppliers", "hot_suppliers")
+AUTH_TOKEN_PARAM = "login_token"
 PRODUCT_TRENDS_PATH = Path(__file__).parent / "data" / "product_trends.csv"
 
 PRIORITY_WEIGHTS = {
@@ -612,6 +632,7 @@ def ensure_default_users(db):
                     "role": account["role"],
                     "supplier_id": account["supplier_id"],
                     "is_active": True,
+                    "account_status": "approved",
                 },
                 "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
             },
@@ -619,7 +640,131 @@ def ensure_default_users(db):
         )
 
 
-def create_account(db, username, password, confirm_password, role, supplier_id=None):
+def session_user_from_doc(user_doc):
+    return {
+        "username": user_doc["username"],
+        "role": user_doc["role"],
+        "supplier_id": user_doc.get("supplier_id"),
+    }
+
+
+def create_login_session(db, user_doc):
+    token = secrets.token_urlsafe(32)
+    db[COLLECTIONS["auth_sessions"]].insert_one(
+        {
+            "token": token,
+            "username": user_doc["username"],
+            "created_at": datetime.now(timezone.utc),
+        }
+    )
+    st.query_params[AUTH_TOKEN_PARAM] = token
+
+
+def restore_login_session(db):
+    token = st.query_params.get(AUTH_TOKEN_PARAM)
+    if not token:
+        return False
+    session_doc = db[COLLECTIONS["auth_sessions"]].find_one({"token": token}, {"_id": 0})
+    if not session_doc:
+        return False
+    user_doc = db[COLLECTIONS["users"]].find_one({"username": session_doc["username"]}, {"_id": 0})
+    if not user_doc:
+        return False
+    if user_doc.get("role") == "supplier" and user_doc.get("account_status", "pending") != "approved":
+        return False
+    if not user_doc.get("is_active", False):
+        return False
+    st.session_state["user"] = session_user_from_doc(user_doc)
+    return True
+
+
+def clear_login_session(db):
+    token = st.query_params.get(AUTH_TOKEN_PARAM)
+    if token:
+        db[COLLECTIONS["auth_sessions"]].delete_one({"token": token})
+        del st.query_params[AUTH_TOKEN_PARAM]
+
+
+def supplier_id_info(db, supplier_id, current_username=None):
+    supplier_id = supplier_id.strip().upper() if supplier_id else ""
+    clean_df = dataframe_from_collection(db, COLLECTIONS["cleaned_orders"], {"supplier": supplier_id})
+    raw_df = dataframe_from_collection(db, COLLECTIONS["raw_orders"], {"Supplier_ID": supplier_id})
+    source_df = clean_df if not clean_df.empty else raw_df
+    categories = []
+    if not clean_df.empty and "product_category" in clean_df.columns:
+        categories = sorted(clean_df["product_category"].dropna().astype(str).unique())
+    elif not raw_df.empty and "Product_Category" in raw_df.columns:
+        categories = sorted(raw_df["Product_Category"].dropna().astype(str).unique())
+    supplier_exists = not source_df.empty
+    order_count = len(source_df)
+    claimed_query = {
+        "role": "supplier",
+        "supplier_id": supplier_id,
+        "account_status": "approved",
+    }
+    if current_username:
+        claimed_query["username"] = {"$ne": current_username}
+    claimed_account = db[COLLECTIONS["users"]].find_one(claimed_query, {"_id": 0, "username": 1})
+    already_claimed = claimed_account is not None
+    return {
+        "supplier_id": supplier_id,
+        "supplier_id_exists": "Yes" if supplier_exists else "No",
+        "order_count": order_count,
+        "categories": ", ".join(categories) if categories else "None",
+        "category_match": "Yes" if categories else "No",
+        "already_claimed": "Yes" if already_claimed else "No",
+        "claimed_by": claimed_account.get("username", "None") if claimed_account else "None",
+    }
+
+
+def generate_verification_code(supplier_id):
+    alphabet = string.ascii_uppercase + string.digits
+    suffix = "".join(secrets.choice(alphabet) for _ in range(6))
+    return f"{supplier_id.upper()}-{suffix}"
+
+
+def verification_collection(db):
+    return db[COLLECTIONS["supplier_verification_codes"]]
+
+
+def get_supplier_verification_code(db, supplier_id):
+    supplier_id = supplier_id.strip().upper()
+    return verification_collection(db).find_one({"supplier_id": supplier_id}, {"_id": 0})
+
+
+def save_supplier_verification_code(db, supplier_id, actor):
+    supplier_id = supplier_id.strip().upper()
+    code = generate_verification_code(supplier_id)
+    verification_collection(db).update_one(
+        {"supplier_id": supplier_id},
+        {
+            "$set": {
+                "supplier_id": supplier_id,
+                "verification_code": code,
+                "is_used": False,
+                "updated_at": datetime.now(timezone.utc),
+                "updated_by": actor,
+            },
+            "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
+        },
+        upsert=True,
+    )
+    log_activity(db, "supplier_verification_code_generated", actor, {"supplier_id": supplier_id})
+    return code
+
+
+def validate_supplier_verification_code(db, supplier_id, verification_code):
+    record = get_supplier_verification_code(db, supplier_id)
+    if not record:
+        return False, "No verification code found for this supplier ID. Ask admin to generate one."
+    if record.get("is_used"):
+        return False, "This verification code was already used."
+    if str(record.get("verification_code", "")).strip() != verification_code.strip():
+        return False, "Invalid supplier verification code."
+    return True, "Verification code is valid."
+
+
+def create_account(db, username, password, confirm_password, role, supplier_id=None, verification_code=None):
     username = username.strip()
     supplier_id = supplier_id.strip().upper() if supplier_id else None
     if len(username) < 3:
@@ -632,20 +777,42 @@ def create_account(db, username, password, confirm_password, role, supplier_id=N
         return False, "Only user and supplier signup are allowed."
     if role == "supplier" and not supplier_id:
         return False, "Supplier ID is required for supplier signup."
+    if role == "supplier":
+        valid_code, message = validate_supplier_verification_code(db, supplier_id, verification_code or "")
+        if not valid_code:
+            return False, message
+        info = supplier_id_info(db, supplier_id)
+        if info["supplier_id_exists"] != "Yes":
+            return False, "Supplier ID was not found in uploaded supplier data."
+        if info["order_count"] <= 0:
+            return False, "Supplier ID has no order history."
+        if info["category_match"] != "Yes":
+            return False, "Supplier ID has no product category match."
+        if info["already_claimed"] == "Yes":
+            return False, "This supplier ID is already claimed by another approved supplier account."
     users = db[COLLECTIONS["users"]]
     if users.find_one({"username": username}):
         return False, "Username already exists."
+    is_supplier = role == "supplier"
     users.insert_one(
         {
             "username": username,
             "password_hash": password_hash(password),
             "role": role,
             "supplier_id": supplier_id,
-            "is_active": True,
+            "is_active": not is_supplier,
+            "account_status": "pending" if is_supplier else "approved",
             "created_at": datetime.now(timezone.utc),
         }
     )
+    if is_supplier:
+        verification_collection(db).update_one(
+            {"supplier_id": supplier_id},
+            {"$set": {"is_used": True, "used_by": username, "used_at": datetime.now(timezone.utc)}},
+        )
     log_activity(db, "account_created", username, {"role": role, "supplier_id": supplier_id})
+    if is_supplier:
+        return True, "Supplier request created. Please wait for admin approval."
     return True, "Account created. You can login now."
 
 
@@ -996,9 +1163,31 @@ def explain_supplier(row, budget=None, deadline=None):
     return "Recommended because it has " + ", ".join(reasons or ["acceptable overall performance"]) + "."
 
 
-def recommend_suppliers(metrics_df, category, quantity, budget, min_quality, deadline, priority, top_n):
+RECOMMENDATION_REQUIRED_COLUMNS = {
+    "supplier",
+    "product_category",
+    "supplier_kpi_score",
+    "user_rating",
+    "risk_score",
+    "quality_rating",
+    "avg_delay",
+    "avg_unit_price",
+    "total_quantity",
+}
+
+
+def validate_recommendation_input(metrics_df, priority):
     if metrics_df.empty:
-        return metrics_df
+        return False, "No supplier metrics available."
+    missing_columns = RECOMMENDATION_REQUIRED_COLUMNS - set(metrics_df.columns)
+    if missing_columns:
+        return False, f"Missing recommendation columns: {', '.join(sorted(missing_columns))}"
+    if priority not in PRIORITY_WEIGHTS:
+        return False, "Unknown recommendation priority."
+    return True, "Recommendation input is valid."
+
+
+def filter_supplier_options(metrics_df, category, budget, min_quality, deadline):
     options = metrics_df[metrics_df["product_category"].str.lower() == category.lower()].copy()
     if options.empty:
         return options
@@ -1007,32 +1196,56 @@ def recommend_suppliers(metrics_df, category, quantity, budget, min_quality, dea
         options[col] = pd.to_numeric(options[col], errors="coerce").fillna(0)
     if budget > 0:
         options = options[options["avg_unit_price"] <= budget]
-    options = options[(options["quality_rating"] >= min_quality) & (options["avg_delay"] <= deadline)]
+    return options[(options["quality_rating"] >= min_quality) & (options["avg_delay"] <= deadline)]
+
+
+def calculate_requirement_match(options, quantity, budget, deadline):
+    scored = options.copy()
+    scored["cost_match"] = np.where(budget > 0, ((budget - scored["avg_unit_price"]) / budget * 100).clip(0, 100), 70)
+    scored["deadline_match"] = ((deadline - scored["avg_delay"]) / max(deadline, 1) * 100).clip(0, 100)
+    scored["quality_match"] = (scored["quality_rating"] / 5 * 100).clip(0, 100)
+    scored["quantity_match"] = np.where(scored["total_quantity"] >= quantity, 100, scored["total_quantity"] / max(quantity, 1) * 100)
+    scored["requirement_match_score"] = (
+        scored["cost_match"] * 0.30
+        + scored["deadline_match"] * 0.30
+        + scored["quality_match"] * 0.25
+        + scored["quantity_match"] * 0.15
+    ).round(2)
+    return scored
+
+
+def calculate_recommendation_scores(options, priority):
+    scored = options.copy()
+    scored["user_rating_score"] = (scored["user_rating"] / 5 * 100).round(2)
+    scored["risk_prediction_score"] = (100 - scored["risk_score"]).round(2)
+
+    weights = PRIORITY_WEIGHTS[priority]
+    scored["final_score"] = (
+        scored["supplier_kpi_score"] * weights["kpi"]
+        + scored["user_rating_score"] * weights["rating"]
+        + scored["risk_prediction_score"] * weights["risk"]
+        + scored["requirement_match_score"] * weights["match"]
+    ).round(2)
+    return scored
+
+
+def rank_recommendations(options, top_n):
+    return options.sort_values("final_score", ascending=False).head(top_n)
+
+
+def recommend_suppliers(metrics_df, category, quantity, budget, min_quality, deadline, priority, top_n):
+    is_valid, _ = validate_recommendation_input(metrics_df, priority)
+    if not is_valid:
+        return pd.DataFrame()
+
+    options = filter_supplier_options(metrics_df, category, budget, min_quality, deadline)
     if options.empty:
         return options
 
-    options["cost_match"] = np.where(budget > 0, ((budget - options["avg_unit_price"]) / budget * 100).clip(0, 100), 70)
-    options["deadline_match"] = ((deadline - options["avg_delay"]) / max(deadline, 1) * 100).clip(0, 100)
-    options["quality_match"] = (options["quality_rating"] / 5 * 100).clip(0, 100)
-    options["quantity_match"] = np.where(options["total_quantity"] >= quantity, 100, options["total_quantity"] / max(quantity, 1) * 100)
-    options["requirement_match_score"] = (
-        options["cost_match"] * 0.30
-        + options["deadline_match"] * 0.30
-        + options["quality_match"] * 0.25
-        + options["quantity_match"] * 0.15
-    ).round(2)
-    options["user_rating_score"] = (options["user_rating"] / 5 * 100).round(2)
-    options["risk_prediction_score"] = (100 - options["risk_score"]).round(2)
-
-    weights = PRIORITY_WEIGHTS[priority]
-    options["final_score"] = (
-        options["supplier_kpi_score"] * weights["kpi"]
-        + options["user_rating_score"] * weights["rating"]
-        + options["risk_prediction_score"] * weights["risk"]
-        + options["requirement_match_score"] * weights["match"]
-    ).round(2)
+    options = calculate_requirement_match(options, quantity, budget, deadline)
+    options = calculate_recommendation_scores(options, priority)
     options["explanation"] = options.apply(lambda row: explain_supplier(row, budget, deadline), axis=1)
-    return options.sort_values("final_score", ascending=False).head(top_n)
+    return rank_recommendations(options, top_n)
 
 
 def build_backup_zip(db):
@@ -1143,12 +1356,19 @@ def page_login(db):
             submitted = st.form_submit_button("Login")
         if submitted:
             user = db[COLLECTIONS["users"]].find_one(
-                {"username": username.strip(), "password_hash": password_hash(password), "is_active": True}
+                {"username": username.strip(), "password_hash": password_hash(password)}
             )
             if user:
-                st.session_state["user"] = {"username": user["username"], "role": user["role"], "supplier_id": user.get("supplier_id")}
+                if user.get("role") == "supplier" and user.get("account_status", "pending") != "approved":
+                    st.warning("Your supplier account is waiting for admin approval.")
+                    return
+                if not user.get("is_active", False):
+                    st.error("This account is inactive. Please contact admin.")
+                    return
+                st.session_state["user"] = session_user_from_doc(user)
+                create_login_session(db, user)
                 st.rerun()
-            st.error("Invalid login or inactive account.")
+            st.error("Invalid username or password.")
 
     with signup_tab:
         with st.form("signup_form"):
@@ -1157,12 +1377,14 @@ def page_login(db):
             confirm_password = st.text_input("Confirm Password", type="password")
             role = st.selectbox("Account Type", ["user", "supplier"])
             supplier_id = ""
+            verification_code = ""
             if role == "supplier":
                 supplier_id = st.text_input("Supplier ID", placeholder="Example: S31")
-                st.caption("Supplier accounts can only see analytics for their own supplier ID.")
+                verification_code = st.text_input("Supplier Verification Code", placeholder="Example: S10-ABC123")
+                st.caption("Supplier accounts are created as pending until admin approval.")
             signup_submitted = st.form_submit_button("Create Account")
         if signup_submitted:
-            success, message = create_account(db, new_username, new_password, confirm_password, role, supplier_id)
+            success, message = create_account(db, new_username, new_password, confirm_password, role, supplier_id, verification_code)
             if success:
                 st.success(message)
             else:
@@ -2141,44 +2363,333 @@ def page_ratings_feedback(db):
         st.download_button("Export Ratings CSV", ratings_df.to_csv(index=False), "supplier_ratings_report.csv", "text/csv")
 
 
+def user_account_table(db):
+    users = dataframe_from_collection(db, COLLECTIONS["users"], {"role": "user"})
+    if users.empty:
+        return users
+    logs = load_collection(db, "recommendation_logs")
+    ratings = load_collection(db, "supplier_ratings")
+    selected_counts = pd.DataFrame(columns=["username", "selected_supplier_count"])
+    rating_counts = pd.DataFrame(columns=["username", "ratings_given_count"])
+    if not logs.empty and {"username", "status"}.issubset(logs.columns):
+        selected_counts = (
+            logs[logs["status"] == "selected"]
+            .groupby("username", as_index=False)
+            .size()
+            .rename(columns={"size": "selected_supplier_count"})
+        )
+    if not ratings.empty and "username" in ratings.columns:
+        rating_counts = ratings.groupby("username", as_index=False).size().rename(columns={"size": "ratings_given_count"})
+    users = users.merge(selected_counts, on="username", how="left").merge(rating_counts, on="username", how="left")
+    users["selected_supplier_count"] = users["selected_supplier_count"].fillna(0).astype(int)
+    users["ratings_given_count"] = users["ratings_given_count"].fillna(0).astype(int)
+    return safe_metric_table(users, ["username", "is_active", "created_at", "selected_supplier_count", "ratings_given_count"])
+
+
+def supplier_account_table(db):
+    suppliers = dataframe_from_collection(db, COLLECTIONS["users"], {"role": "supplier"})
+    if suppliers.empty:
+        return suppliers
+    ratings = load_collection(db, "supplier_ratings")
+    rows = []
+    for _, account in suppliers.iterrows():
+        supplier_id = str(account.get("supplier_id", "")).upper()
+        info = supplier_id_info(db, supplier_id, current_username=account.get("username"))
+        supplier_ratings = ratings[ratings["supplier"] == supplier_id] if not ratings.empty and "supplier" in ratings.columns else pd.DataFrame()
+        avg_rating = 0
+        if not supplier_ratings.empty and "rating" in supplier_ratings.columns:
+            avg_rating = round(pd.to_numeric(supplier_ratings["rating"], errors="coerce").mean(), 2)
+        rows.append(
+            {
+                "username": account.get("username"),
+                "supplier_id": supplier_id,
+                "is_active": account.get("is_active", False),
+                "account_status": account.get("account_status", "pending"),
+                "supplier_id_exists": info["supplier_id_exists"],
+                "order_count": info["order_count"],
+                "categories": info["categories"],
+                "already_claimed": info["already_claimed"],
+                "created_at": account.get("created_at"),
+                "feedback_count": len(supplier_ratings),
+                "avg_rating": avg_rating,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def update_account_username(db, old_username, new_username, actor):
+    new_username = new_username.strip()
+    if len(new_username) < 3:
+        return False, "Username must be at least 3 characters."
+    if db[COLLECTIONS["users"]].find_one({"username": new_username}):
+        return False, "Username already exists."
+    db[COLLECTIONS["users"]].update_one({"username": old_username}, {"$set": {"username": new_username}})
+    log_activity(db, "account_username_updated", actor, {"old_username": old_username, "new_username": new_username})
+    return True, "Username updated."
+
+
+def update_account_password(db, username, new_password, actor):
+    if len(new_password) < 6:
+        return False, "Password must be at least 6 characters."
+    db[COLLECTIONS["users"]].update_one({"username": username}, {"$set": {"password_hash": password_hash(new_password)}})
+    log_activity(db, "account_password_reset", actor, {"username": username})
+    return True, "Password reset."
+
+
 def page_manage_users(db):
-    page_header("Manage Users")
-    users = load_collection(db, "users")
-    ui_dataframe(users.drop(columns=["password_hash"], errors="ignore"), width="stretch")
-    with st.form("create_user"):
+    page_header("Manage Accounts")
+    actor = st.session_state["user"]["username"]
+    mode_col1, mode_col2 = st.columns(2)
+    if mode_col1.button("User Accounts", use_container_width=True):
+        st.session_state["manage_account_mode"] = "User Accounts"
+    if mode_col2.button("Supplier Accounts", use_container_width=True):
+        st.session_state["manage_account_mode"] = "Supplier Accounts"
+    mode = st.session_state.get("manage_account_mode", "User Accounts")
+
+    if mode == "Supplier Accounts":
+        supplier_df = supplier_account_table(db)
+        pending_df = supplier_df[supplier_df["account_status"] == "pending"].copy() if not supplier_df.empty else pd.DataFrame()
+        managed_supplier_df = supplier_df[supplier_df["account_status"] != "pending"].copy() if not supplier_df.empty else pd.DataFrame()
+        s1, s2, s3, s4 = st.columns(4)
+        s1.metric("Supplier Accounts", len(supplier_df))
+        s2.metric("Pending Requests", len(pending_df))
+        s3.metric("Approved", int((supplier_df["account_status"] == "approved").sum()) if not supplier_df.empty else 0)
+        s4.metric("Active", int((supplier_df["is_active"] == True).sum()) if not supplier_df.empty else 0)
+
+        st.subheader("Supplier Accounts")
+        if supplier_df.empty:
+            st.info("No supplier accounts yet.")
+        else:
+            ui_dataframe(supplier_df, width="stretch")
+
+        if not managed_supplier_df.empty:
+            st.subheader("Manage Supplier Account")
+            selected_supplier_user = st.selectbox("Select supplier account", managed_supplier_df["username"].tolist(), key="selected_supplier_account")
+            selected_doc = db[COLLECTIONS["users"]].find_one({"username": selected_supplier_user}, {"_id": 0})
+            current_supplier_id = selected_doc.get("supplier_id", "") if selected_doc else ""
+            info = supplier_id_info(db, current_supplier_id, current_username=selected_supplier_user)
+
+            u1, u2 = st.columns(2)
+            new_supplier_username = u1.text_input("Update username", value=selected_supplier_user, key="supplier_new_username")
+            if u1.button("Update Supplier Username"):
+                success, message = update_account_username(db, selected_supplier_user, new_supplier_username, actor)
+                st.success(message) if success else st.error(message)
+                if success:
+                    st.rerun()
+            new_supplier_password = u2.text_input("New password", type="password", key="supplier_new_password")
+            if u2.button("Reset Supplier Password"):
+                success, message = update_account_password(db, selected_supplier_user, new_supplier_password, actor)
+                st.success(message) if success else st.error(message)
+
+            a1, a2 = st.columns(2)
+            if a1.button("Activate"):
+                db[COLLECTIONS["users"]].update_one({"username": selected_supplier_user}, {"$set": {"is_active": True}})
+                log_activity(db, "supplier_account_activated", actor, {"username": selected_supplier_user})
+                st.success("Supplier account activated.")
+                st.rerun()
+            if a2.button("Deactivate"):
+                db[COLLECTIONS["users"]].update_one({"username": selected_supplier_user}, {"$set": {"is_active": False}})
+                log_activity(db, "supplier_account_deactivated", actor, {"username": selected_supplier_user})
+                st.success("Supplier account deactivated.")
+                st.rerun()
+
+            st.subheader("Supplier Activity")
+            ratings = load_collection(db, "supplier_ratings")
+            supplier_ratings = ratings[ratings["supplier"] == current_supplier_id] if not ratings.empty and "supplier" in ratings.columns else pd.DataFrame()
+            if supplier_ratings.empty:
+                st.info("No supplier feedback activity.")
+            else:
+                ui_dataframe(safe_metric_table(supplier_ratings.sort_values("created_at", ascending=False), ["created_at", "username", "supplier", "product_category", "rating", "event_type", "comment"]), width="stretch")
+        else:
+            st.info("No approved or rejected supplier accounts to manage yet.")
+
+        st.subheader("Create Supplier Account")
+        with st.form("admin_create_supplier_account"):
+            supplier_username = st.text_input("Supplier username")
+            supplier_password = st.text_input("Supplier password", type="password")
+            supplier_id = st.text_input("Supplier ID", placeholder="Example: S10").strip().upper()
+            create_supplier_submitted = st.form_submit_button("Create Approved Supplier")
+        if create_supplier_submitted:
+            info = supplier_id_info(db, supplier_id)
+            if db[COLLECTIONS["users"]].find_one({"username": supplier_username.strip()}):
+                st.error("Username already exists.")
+            elif len(supplier_password) < 6:
+                st.error("Password must be at least 6 characters.")
+            elif info["supplier_id_exists"] != "Yes" or info["order_count"] <= 0 or info["category_match"] != "Yes":
+                st.error("Supplier ID verification failed.")
+            elif info["already_claimed"] == "Yes":
+                st.error("This supplier ID is already claimed by another approved supplier account.")
+            else:
+                db[COLLECTIONS["users"]].insert_one(
+                    {
+                        "username": supplier_username.strip(),
+                        "password_hash": password_hash(supplier_password),
+                        "role": "supplier",
+                        "supplier_id": supplier_id,
+                        "is_active": True,
+                        "account_status": "approved",
+                        "created_at": datetime.now(timezone.utc),
+                    }
+                )
+                log_activity(db, "supplier_account_created_by_admin", actor, {"username": supplier_username.strip(), "supplier_id": supplier_id})
+                st.success("Supplier account created and approved.")
+                st.rerun()
+
+        if not pending_df.empty:
+            st.subheader("Approval")
+            pending_supplier_user = st.selectbox("Select pending supplier request", pending_df["username"].tolist(), key="pending_supplier_account")
+            pending_doc = db[COLLECTIONS["users"]].find_one({"username": pending_supplier_user}, {"_id": 0})
+            pending_supplier_id = pending_doc.get("supplier_id", "") if pending_doc else ""
+            pending_info = supplier_id_info(db, pending_supplier_id, current_username=pending_supplier_user)
+            selected_status = pending_doc.get("account_status", "pending") if pending_doc else "pending"
+            selected_active = "Active" if pending_doc and pending_doc.get("is_active", False) else "Inactive"
+            st.info(
+                f"Pending account: {pending_supplier_user} | Supplier ID: {pending_supplier_id} | "
+                f"Status: {selected_status} | Account: {selected_active}"
+            )
+            ap1, ap2, ap3, ap4, ap5 = st.columns(5)
+            ap1.metric("Supplier ID Exists", pending_info["supplier_id_exists"])
+            ap2.metric("Order History", pending_info["order_count"])
+            ap3.metric("Category Match", pending_info["category_match"])
+            ap4.metric("Already Claimed", pending_info["already_claimed"])
+            ap5.metric("Claimed By", pending_info["claimed_by"])
+            st.caption(f"Categories: {pending_info['categories']}")
+            a1, a2 = st.columns(2)
+            if a1.button("Approve"):
+                if pending_info["supplier_id_exists"] == "Yes" and pending_info["order_count"] > 0 and pending_info["category_match"] == "Yes" and pending_info["already_claimed"] == "No":
+                    db[COLLECTIONS["users"]].update_one({"username": pending_supplier_user}, {"$set": {"account_status": "approved", "is_active": True}})
+                    log_activity(db, "supplier_account_approved", actor, {"username": pending_supplier_user, "supplier_id": pending_supplier_id})
+                    st.success("Supplier account approved.")
+                    st.rerun()
+                else:
+                    st.error(f"Cannot approve. This supplier ID is already claimed by {pending_info['claimed_by']}.")
+            if a2.button("Reject"):
+                db[COLLECTIONS["users"]].update_one({"username": pending_supplier_user}, {"$set": {"account_status": "rejected", "is_active": False}})
+                log_activity(db, "supplier_account_rejected", actor, {"username": pending_supplier_user, "supplier_id": pending_supplier_id})
+                st.success("Supplier account rejected.")
+                st.rerun()
+            if pending_info["already_claimed"] == "Yes":
+                st.warning(f"{pending_supplier_id} is already approved for {pending_info['claimed_by']}. Use replace only if this pending account is the real supplier.")
+                if st.button("Approve and Replace Existing Claim"):
+                    db[COLLECTIONS["users"]].update_many(
+                        {
+                            "role": "supplier",
+                            "supplier_id": pending_supplier_id,
+                            "account_status": "approved",
+                            "username": {"$ne": pending_supplier_user},
+                        },
+                        {"$set": {"account_status": "replaced", "is_active": False}},
+                    )
+                    db[COLLECTIONS["users"]].update_one(
+                        {"username": pending_supplier_user},
+                        {"$set": {"account_status": "approved", "is_active": True}},
+                    )
+                    log_activity(
+                        db,
+                        "supplier_account_approved_replacing_claim",
+                        actor,
+                        {"username": pending_supplier_user, "supplier_id": pending_supplier_id, "previous_claim": pending_info["claimed_by"]},
+                    )
+                    st.success("Supplier account approved and previous claim was deactivated.")
+                    st.rerun()
+        else:
+            st.subheader("Approval")
+            st.info("No pending supplier requests to approve.")
+
+        st.subheader("Supplier Verification Codes")
+        vc1, vc2 = st.columns([2, 1])
+        supplier_id_for_code = vc1.text_input("Supplier ID for code", placeholder="Example: S10").strip().upper()
+        if vc2.button("Generate Code", use_container_width=True):
+            info = supplier_id_info(db, supplier_id_for_code)
+            if not supplier_id_for_code:
+                st.error("Enter supplier ID first.")
+            elif info["supplier_id_exists"] != "Yes":
+                st.error("Supplier ID not found in uploaded supplier data.")
+            else:
+                code = save_supplier_verification_code(db, supplier_id_for_code, actor)
+                st.success(f"Verification code for {supplier_id_for_code}: {code}")
+
+        codes_df = dataframe_from_collection(db, COLLECTIONS["supplier_verification_codes"])
+        if not codes_df.empty:
+            ui_dataframe(safe_metric_table(codes_df, ["supplier_id", "verification_code", "is_used", "used_by", "created_at", "updated_at"]), width="stretch")
+
+        st.subheader("Pending Supplier Requests")
+        if pending_df.empty:
+            st.info("No pending supplier requests.")
+        else:
+            ui_dataframe(
+                safe_metric_table(
+                    pending_df,
+                    ["username", "supplier_id", "supplier_id_exists", "order_count", "categories", "already_claimed", "account_status", "created_at"],
+                ),
+                width="stretch",
+            )
+        return
+
+    users_df = user_account_table(db)
+    u1, u2, u3 = st.columns(3)
+    u1.metric("User Accounts", len(users_df))
+    u2.metric("Active Users", int((users_df["is_active"] == True).sum()) if not users_df.empty else 0)
+    u3.metric("Ratings Given", int(users_df["ratings_given_count"].sum()) if not users_df.empty else 0)
+
+    st.subheader("User Accounts")
+    if users_df.empty:
+        st.info("No user accounts yet.")
+    else:
+        ui_dataframe(users_df, width="stretch")
+
+    if not users_df.empty:
+        st.subheader("Manage User Accounts")
+        selected = st.selectbox("Select user account", users_df["username"].tolist(), key="selected_user_account")
+        c1, c2 = st.columns(2)
+        new_username = c1.text_input("Update username", value=selected, key="new_user_username")
+        if c1.button("Update Username"):
+            success, message = update_account_username(db, selected, new_username, actor)
+            st.success(message) if success else st.error(message)
+            if success:
+                st.rerun()
+        new_password = c2.text_input("New password", type="password", key="new_user_password")
+        if c2.button("Reset Password"):
+            success, message = update_account_password(db, selected, new_password, actor)
+            st.success(message) if success else st.error(message)
+
+        a1, a2 = st.columns(2)
+        if a1.button("Activate User"):
+            db[COLLECTIONS["users"]].update_one({"username": selected}, {"$set": {"is_active": True}})
+            log_activity(db, "user_account_activated", actor, {"username": selected})
+            st.success("User account activated.")
+            st.rerun()
+        if a2.button("Deactivate User"):
+            db[COLLECTIONS["users"]].update_one({"username": selected}, {"$set": {"is_active": False}})
+            log_activity(db, "user_account_deactivated", actor, {"username": selected})
+            st.success("User account deactivated.")
+            st.rerun()
+
+        st.subheader("User Activity")
+        logs = dataframe_from_collection(db, COLLECTIONS["recommendation_logs"], {"username": selected})
+        ratings = dataframe_from_collection(db, COLLECTIONS["supplier_ratings"], {"username": selected})
+        act1, act2 = st.columns(2)
+        with act1:
+            st.caption("Selected Suppliers")
+            selected_logs = logs[logs["status"] == "selected"] if not logs.empty and "status" in logs.columns else pd.DataFrame()
+            ui_dataframe(safe_metric_table(selected_logs.sort_values("created_at", ascending=False) if not selected_logs.empty else selected_logs, ["supplier", "product_category", "final_score", "risk_level", "created_at"]), width="stretch")
+        with act2:
+            st.caption("Ratings Given")
+            ui_dataframe(safe_metric_table(ratings.sort_values("created_at", ascending=False) if not ratings.empty else ratings, ["supplier", "product_category", "rating", "event_type", "comment", "created_at"]), width="stretch")
+
+    st.subheader("Create New Account")
+    with st.form("admin_create_user_account"):
         username = st.text_input("New username")
         password = st.text_input("Password", type="password")
-        role = st.selectbox("Role", ["user", "admin"])
         submitted = st.form_submit_button("Create User")
     if submitted:
-        try:
-            db[COLLECTIONS["users"]].insert_one(
-                {
-                    "username": username.strip(),
-                    "password_hash": password_hash(password),
-                    "role": role,
-                    "is_active": True,
-                    "created_at": datetime.now(timezone.utc),
-                }
-            )
-            log_activity(db, "user_created", st.session_state["user"]["username"], {"username": username, "role": role})
-            st.success("User created.")
+        success, message = create_account(db, username, password, password, "user")
+        st.success(message) if success else st.error(message)
+        if success:
             st.rerun()
-        except Exception as exc:
-            st.error(f"Could not create user: {exc}")
-    if not users.empty:
-        selected = st.selectbox("Select account", users["username"].tolist())
-        c1, c2 = st.columns(2)
-        if c1.button("Activate"):
-            db[COLLECTIONS["users"]].update_one({"username": selected}, {"$set": {"is_active": True}})
-            st.success("Account activated.")
-        if c2.button("Deactivate"):
-            db[COLLECTIONS["users"]].update_one({"username": selected}, {"$set": {"is_active": False}})
-            st.success("Account deactivated.")
 
 
 def page_user_home(db):
-    title_col, search_col = st.columns([2, 1])
     metrics_df = load_supplier_metrics(db)
     if metrics_df.empty:
         st.warning("No supplier data available yet.")
@@ -2186,7 +2697,9 @@ def page_user_home(db):
     if "supplier_rank_score" not in metrics_df.columns:
         st.warning("Supplier metrics need to be refreshed by admin from Clean Data.")
         return
-    search_text = search_col.text_input("Search ", placeholder="Example: S10 , Machinery , Food").strip()
+    st.markdown('<div style="height: 1.25rem;"></div>', unsafe_allow_html=True)
+    title_col, search_col = st.columns([1.55, 1])
+    search_text = search_col.text_input("Search", placeholder="Example: S10, Machinery, Food").strip()
     if not search_text:
         title_col.markdown(
             """
@@ -2535,8 +3048,9 @@ def render_app():
     ensure_default_users(db)
 
     if "user" not in st.session_state:
-        page_login(db)
-        return
+        if not restore_login_session(db):
+            page_login(db)
+            return
 
     user = st.session_state["user"]
     with st.sidebar:
@@ -2554,11 +3068,12 @@ def render_app():
         )
         st.caption(f"{user['username']} ({user['role']})")
         if st.button("Logout"):
+            clear_login_session(db)
             st.session_state.clear()
             st.rerun()
         if user["role"] == "admin":
             st.markdown('<div class="sidebar-role-badge">🛠️ Admin Pages<small>Data control and analysis</small></div>', unsafe_allow_html=True)
-            pages = ["Dashboard", "Upload Data", "Clean Data", "View Data", "EDA & KPI", "User Rating"]
+            pages = ["Dashboard", "Upload Data", "Clean Data", "View Data", "EDA & KPI", "User Rating", "Manage Accounts"]
             page_icons = {
                 "Dashboard": "🏠 Dashboard",
                 "Upload Data": "📤 Upload Data",
@@ -2566,6 +3081,7 @@ def render_app():
                 "View Data": "📋 View Data",
                 "EDA & KPI": "📈 EDA & KPI",
                 "User Rating": "⭐ User Rating",
+                "Manage Accounts": "👥 Manage Accounts",
             }
             if st.session_state.get("admin_nav_target") in pages:
                 st.session_state["admin_page"] = st.session_state.pop("admin_nav_target")
@@ -2605,6 +3121,8 @@ def render_app():
         page_eda(db)
     elif page == "User Rating":
         page_ratings_feedback(db)
+    elif page == "Manage Accounts":
+        page_manage_users(db)
     elif page == "Supplier Dashboard":
         page_supplier_dashboard(db)
     elif page == "Supplier Trend":

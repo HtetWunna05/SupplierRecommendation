@@ -21,6 +21,8 @@ COLLECTIONS = {
     "recommendation_logs": "recommendation_logs",
     "activity_logs": "activity_logs",
     "users": "users",
+    "supplier_verification_codes": "supplier_verification_codes",
+    "auth_sessions": "auth_sessions",
 }
 
 
@@ -36,6 +38,10 @@ def connect_to_mongodb():
 
 def ensure_indexes(db):
     db[COLLECTIONS["users"]].create_index("username", unique=True)
+    db[COLLECTIONS["users"]].create_index([("role", 1), ("supplier_id", 1)])
+    db[COLLECTIONS["supplier_verification_codes"]].create_index("supplier_id", unique=True)
+    db[COLLECTIONS["auth_sessions"]].create_index("token", unique=True)
+    db[COLLECTIONS["auth_sessions"]].create_index("username")
     db[COLLECTIONS["raw_orders"]].create_index("Order_ID", unique=True, sparse=True)
     db[COLLECTIONS["cleaned_orders"]].create_index("order_id", unique=True, sparse=True)
     db[COLLECTIONS["cleaned_orders"]].create_index([("supplier", 1), ("product_category", 1)])
