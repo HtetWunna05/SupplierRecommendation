@@ -627,14 +627,14 @@ def ensure_default_users(db):
         users.update_one(
             {"username": account["username"]},
             {
-                "$set": {
+                "$setOnInsert": {
                     "password_hash": password_hash(account["password"]),
                     "role": account["role"],
                     "supplier_id": account["supplier_id"],
                     "is_active": True,
                     "account_status": "approved",
-                },
-                "$setOnInsert": {"created_at": datetime.now(timezone.utc)},
+                    "created_at": datetime.now(timezone.utc),
+                }
             },
             upsert=True,
         )
@@ -1768,12 +1768,11 @@ def page_view_data(db):
     metrics_df = load_supplier_metrics(db)
 
     if not metrics_df.empty:
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2, c3 = st.columns(3)
         category = c1.selectbox("Category", ["All"] + sorted(metrics_df["product_category"].dropna().unique()))
         supplier = c2.selectbox("Supplier", ["All"] + sorted(metrics_df["supplier"].dropna().unique()))
         risk = c3.selectbox("Risk", ["All", "Low", "Medium", "High"])
-        min_rating = c4.slider("Minimum Rating", 1.0, 5.0, 1.0, 0.1)
-        filtered = metrics_df[metrics_df["final_rating"] >= min_rating].copy()
+        filtered = metrics_df.copy()
         if category != "All":
             filtered = filtered[filtered["product_category"] == category]
         if supplier != "All":
@@ -2174,8 +2173,10 @@ def page_supplier_dashboard(db):
     st.subheader("Supplier Dashboard Summary")
     predicted_demand, demand_direction, _ = predict_next_demand(trend_df)
     predicted_risk, predicted_risk_level, _ = predict_supplier_future_risk(metric_row, trend_df)
+    demand_delta_color = "normal" if demand_direction in {"Increasing", "Decreasing"} else "off"
+    demand_delta = f"+ {demand_direction}" if demand_direction == "Increasing" else f"- {demand_direction}" if demand_direction == "Decreasing" else demand_direction
     s1, s2, s3, s4 = st.columns(4)
-    s1.metric("Predicted Demand", predicted_demand, demand_direction)
+    s1.metric("Predicted Demand", predicted_demand, demand_delta, delta_color=demand_delta_color)
     s2.metric("Future Risk", predicted_risk_level, f"{predicted_risk}/100")
     s3.metric("Avg Feedback", f"{avg_feedback}/5", f"{feedback_count} ratings")
     s4.metric("Current Score", f"{metric_row['supplier_rank_score']}/100")
@@ -2473,13 +2474,19 @@ def page_manage_users(db):
             new_supplier_username = u1.text_input("Update username", value=selected_supplier_user, key="supplier_new_username")
             if u1.button("Update Supplier Username"):
                 success, message = update_account_username(db, selected_supplier_user, new_supplier_username, actor)
-                st.success(message) if success else st.error(message)
+                if success:
+                    st.success(message)
+                else:
+                    st.error(message)
                 if success:
                     st.rerun()
             new_supplier_password = u2.text_input("New password", type="password", key="supplier_new_password")
             if u2.button("Reset Supplier Password"):
                 success, message = update_account_password(db, selected_supplier_user, new_supplier_password, actor)
-                st.success(message) if success else st.error(message)
+                if success:
+                    st.success(message)
+                else:
+                    st.error(message)
 
             a1, a2 = st.columns(2)
             if a1.button("Activate"):
@@ -2645,13 +2652,19 @@ def page_manage_users(db):
         new_username = c1.text_input("Update username", value=selected, key="new_user_username")
         if c1.button("Update Username"):
             success, message = update_account_username(db, selected, new_username, actor)
-            st.success(message) if success else st.error(message)
+            if success:
+                st.success(message)
+            else:
+                st.error(message)
             if success:
                 st.rerun()
         new_password = c2.text_input("New password", type="password", key="new_user_password")
         if c2.button("Reset Password"):
             success, message = update_account_password(db, selected, new_password, actor)
-            st.success(message) if success else st.error(message)
+            if success:
+                st.success(message)
+            else:
+                st.error(message)
 
         a1, a2 = st.columns(2)
         if a1.button("Activate User"):
@@ -2684,7 +2697,10 @@ def page_manage_users(db):
         submitted = st.form_submit_button("Create User")
     if submitted:
         success, message = create_account(db, username, password, password, "user")
-        st.success(message) if success else st.error(message)
+        if success:
+            st.success(message)
+        else:
+            st.error(message)
         if success:
             st.rerun()
 
