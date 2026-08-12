@@ -1,4 +1,5 @@
 import hashlib
+import html
 import io
 import secrets
 import string
@@ -45,11 +46,98 @@ def inject_custom_css():
           --lav:#d7c6ff; --green:#809b87; --shadow:0 18px 45px rgba(31,31,28,.08);
         }
         html,body,[class*="css"]{font-family:'DM Sans',sans-serif;color:var(--ink)}
-        .stApp{background:var(--canvas)}
-        .stApp>header{background:rgba(247,246,242,.96);border-bottom:1px solid #ebe8e1}
+        .stApp{background:var(--canvas)!important;position:relative;min-height:100vh}
+        .stApp>header{background:rgba(247,246,242,.96);border-bottom:1px solid #ebe8e1;position:relative;z-index:10}
+        section.main{position:relative;z-index:5}
+        .main .block-container{position:relative;z-index:6}
         .block-container{max-width:none;width:100%;padding:2.2rem 3.2rem 5rem}
         section.main>div{max-width:none}
 
+        .login-feature-outside{
+            margin-top:-.15rem;
+            min-height:115px;
+            box-sizing:border-box;
+            background:rgba(255,255,255,.86);
+            border:1px solid rgba(30,38,50,.08);
+            box-shadow:0 12px 30px rgba(30,38,50,.06);
+        }
+        .login-feature-outside span{color:#17213b}
+        .login-feature-outside small{color:#77756f}
+        .login-panel{margin-top:1.15rem}
+        .login-ai-score{margin-top:1rem}
+        .login-metric{margin-bottom:.75rem}
+        .login-how{margin-top:1rem}
+        .login-how-item{min-height:88px;padding:.25rem 0}
+        @media (max-width:900px){.login-feature-outside{margin-top:.5rem}}
+
+        /* ============================================================
+           SUPPLYLOGIX — SMART LOGIN PAGE
+           ============================================================ */
+        .login-page-marker{display:none}
+        body:has(.login-page-marker) .stApp{
+            background:
+                radial-gradient(circle at 8% 5%, rgba(121,149,154,.18), transparent 28%),
+                radial-gradient(circle at 92% 12%, rgba(201,182,237,.20), transparent 30%),
+                #f5f4f0!important;
+        }
+        body:has(.login-page-marker) .block-container{max-width:1380px;padding:0 2rem 4rem}
+        .login-topbar{height:76px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(30,38,50,.09);margin-bottom:1.4rem}
+        .login-top-brand{display:flex;align-items:center;gap:.65rem;font-family:'Manrope',sans-serif;font-size:1.08rem;font-weight:850;letter-spacing:-.025em;color:#17213b}
+        .login-top-brand-icon{width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:#17213b;color:#fff;box-shadow:0 8px 20px rgba(23,33,59,.18)}
+        .login-top-note{font-size:.62rem;letter-spacing:.16em;font-weight:850;color:#77756f}
+        .login-hero{position:relative;min-height:430px;overflow:hidden;border-radius:30px;background:#17213b;box-shadow:0 25px 65px rgba(29,38,53,.16)}
+        .login-hero-photo{position:absolute;inset:0;background-image:linear-gradient(90deg,rgba(12,20,34,.94) 0%,rgba(12,20,34,.82) 40%,rgba(12,20,34,.35) 72%,rgba(12,20,34,.18) 100%),url("https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=2000&q=90");background-size:cover;background-position:center;transform:scale(1.01)}
+        .login-hero-overlay{position:absolute;inset:0;background:radial-gradient(circle at 82% 30%,rgba(126,149,154,.28),transparent 28%),linear-gradient(135deg,transparent,rgba(23,33,59,.25))}
+        .login-hero-content{position:relative;z-index:2;max-width:700px;padding:4.2rem 4rem;color:#fff}
+        .login-eyebrow{display:inline-flex;align-items:center;gap:.45rem;padding:.42rem .7rem;border:1px solid rgba(255,255,255,.22);border-radius:999px;background:rgba(255,255,255,.09);backdrop-filter:blur(10px);font-size:.58rem;letter-spacing:.16em;font-weight:850}
+        .login-hero-content h1{margin:1.15rem 0 .75rem!important;font-family:'Manrope',sans-serif;font-size:clamp(2.5rem,5vw,4.4rem)!important;line-height:.98!important;letter-spacing:-.055em;color:#fff!important}
+        .login-hero-content h1 span{color:#c9b6ed}
+        .login-hero-content>p{max-width:570px;margin:0;color:rgba(255,255,255,.78);font-size:1rem;line-height:1.65}
+        .login-feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-top:2rem}
+        .login-feature{min-height:100px;padding:1rem;border:1px solid rgba(255,255,255,.15);border-radius:17px;background:rgba(255,255,255,.085);backdrop-filter:blur(14px)}
+        .login-feature b{display:block;margin-bottom:.55rem;color:#c9b6ed;font-size:.62rem;letter-spacing:.12em}.login-feature span{display:block;color:#fff;font-size:.84rem;font-weight:800}.login-feature small{display:block;margin-top:.25rem;color:rgba(255,255,255,.60);font-size:.68rem;line-height:1.35}
+        .login-workspace{display:grid;grid-template-columns:1.02fr .98fr;gap:1.35rem;margin-top:1.35rem}
+        .login-panel,.login-intelligence{border:1px solid rgba(30,38,50,.09);border-radius:27px;background:rgba(255,255,255,.82);backdrop-filter:blur(18px);box-shadow:0 18px 45px rgba(30,38,50,.07)}
+        .login-panel{padding:1.6rem}.login-welcome-card{padding:.25rem .15rem 1rem}.login-card-kicker{margin-bottom:.45rem;color:#806e9f;font-size:.59rem;font-weight:900;letter-spacing:.17em}.login-welcome-card h2{margin:0!important;font-family:'Manrope',sans-serif;font-size:2rem!important;letter-spacing:-.045em;color:#17213b!important}.login-welcome-card p{margin:.45rem 0 0;color:#74736d;font-size:.84rem}
+        body:has(.login-page-marker) .stTabs{border:0;background:transparent;padding:0;box-shadow:none}
+        body:has(.login-page-marker) [data-baseweb="tab-list"]{padding:.25rem;border-radius:14px;background:#eeede9}
+        body:has(.login-page-marker) [data-baseweb="tab"]{min-height:40px;border-radius:10px;color:#77756f!important;font-size:.76rem;font-weight:800}
+        body:has(.login-page-marker) [data-baseweb="tab"][aria-selected="true"]{background:#17213b!important;color:#fff!important}
+        body:has(.login-page-marker) div[data-testid="stForm"]{border:0!important;background:transparent!important;padding:1rem .05rem .1rem!important;box-shadow:none!important}
+        body:has(.login-page-marker) label{color:#44484f!important;font-size:.72rem!important;font-weight:750!important}
+        body:has(.login-page-marker) div[data-baseweb="input"]{min-height:49px;border:1px solid #deded9!important;border-radius:13px!important;background:#fff!important;transition:all .18s ease}
+        body:has(.login-page-marker) div[data-baseweb="input"]:focus-within{border-color:#687d91!important;box-shadow:0 0 0 3px rgba(104,125,145,.12)!important}
+        body:has(.login-page-marker) div[data-baseweb="input"] input{color:#17213b!important}
+        body:has(.login-page-marker) div[data-testid="stFormSubmitButton"] button{min-height:51px!important;border:0!important;border-radius:14px!important;background:#17213b!important;color:#fff!important;font-weight:850!important;box-shadow:0 12px 25px rgba(23,33,59,.18)!important;transition:all .18s ease}
+        body:has(.login-page-marker) div[data-testid="stFormSubmitButton"] button:hover{background:#273d70!important;transform:translateY(-1px)}
+        body:has(.login-page-marker) .stSelectbox div[data-baseweb="select"]>div{background:#fff!important;border:1px solid #deded9!important;border-radius:13px!important}
+        body:has(.login-page-marker) .stAlert{border-radius:13px!important}
+        .login-intelligence{position:relative;overflow:hidden;padding:1.7rem}.login-intelligence:before{content:"";position:absolute;width:240px;height:240px;top:-110px;right:-80px;border-radius:50%;background:radial-gradient(circle,rgba(201,182,237,.55),transparent 68%)}
+        .login-intelligence-kicker{position:relative;color:#806e9f;font-size:.59rem;letter-spacing:.16em;font-weight:900}.login-intelligence h3{position:relative;margin:.45rem 0 .3rem;font-family:'Manrope',sans-serif;font-size:1.55rem;line-height:1.05;letter-spacing:-.04em;color:#17213b}.login-intelligence-subtitle{position:relative;color:#77756f;font-size:.78rem;line-height:1.5}
+        .login-ai-score{position:relative;display:flex;align-items:center;gap:1rem;margin:1.25rem 0;padding:1rem;border-radius:19px;background:linear-gradient(120deg,#f4f1fa,#eef4f3);border:1px solid #e0ddd8}.login-ai-orb{width:58px;height:58px;min-width:58px;display:grid;place-items:center;border-radius:50%;background:radial-gradient(circle at 30% 25%,#c9b6ed,#78959a);color:#fff;font-size:1.25rem;box-shadow:0 10px 25px rgba(71,77,95,.18)}.login-ai-score strong{display:block;font-family:'Manrope',sans-serif;font-size:1.35rem;color:#17213b}.login-ai-score span{color:#77756f;font-size:.7rem}
+        .login-metrics{position:relative;display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem;margin-top:1rem}.login-metric{padding:.95rem;border:1px solid #e4e1db;border-radius:16px;background:rgba(250,249,246,.85)}.login-metric strong{display:block;font-family:'Manrope',sans-serif;font-size:1.35rem;color:#17213b}.login-metric span{display:block;margin-top:.15rem;color:#7b7973;font-size:.65rem}.login-metric small{display:block;margin-top:.45rem;color:#4e765e;font-size:.62rem;font-weight:750}
+        .login-how{margin-top:1.35rem;padding:1.35rem 1.5rem;border:1px solid #e1ded8;border-radius:22px;background:#fbfaf7}.login-how-title{margin-bottom:.8rem;color:#17213b;font-family:'Manrope',sans-serif;font-size:.9rem;font-weight:850}.login-how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}.login-how-item{display:flex;gap:.65rem;align-items:flex-start}.login-how-number{width:27px;height:27px;min-width:27px;display:grid;place-items:center;border-radius:9px;background:#17213b;color:#fff;font-size:.62rem;font-weight:850}.login-how-item b{display:block;color:#353a43;font-size:.7rem}.login-how-item span{display:block;margin-top:.15rem;color:#7b7973;font-size:.62rem;line-height:1.35}
+        /* Smart Recommendation visual refresh */
+        body:has(.login-page-marker) .stApp{background:radial-gradient(circle at 12% 10%,rgba(121,149,154,.16),transparent 25%),radial-gradient(circle at 88% 8%,rgba(201,182,237,.22),transparent 28%),#f7f6f2}
+        .login-hero{min-height:465px;border-radius:34px;background:#111b33;box-shadow:0 28px 75px rgba(23,33,59,.20)}
+        .login-hero-photo{background-image:linear-gradient(90deg,rgba(10,19,35,.96) 0%,rgba(10,19,35,.82) 34%,rgba(10,19,35,.40) 68%,rgba(10,19,35,.16) 100%),url("https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=2200&q=92");background-position:center 48%;}
+        .login-hero-overlay{background:radial-gradient(circle at 78% 24%,rgba(201,182,237,.34),transparent 25%),radial-gradient(circle at 66% 90%,rgba(120,149,154,.25),transparent 28%)}
+        .login-hero-content{max-width:760px;padding:4.6rem 4.2rem}
+        .login-eyebrow{background:rgba(201,182,237,.13);border-color:rgba(201,182,237,.34);color:#e5dbf5}
+        .login-hero-content h1{font-size:clamp(2.8rem,5.5vw,4.8rem)!important}
+        .login-hero-content h1 span{color:#d6c4ef}
+        .login-feature-grid{grid-template-columns:repeat(3,1fr);gap:.85rem}
+        .login-feature{background:rgba(255,255,255,.075);border-color:rgba(255,255,255,.16);border-radius:19px}
+        .login-feature b{color:#d6c4ef}
+        .login-panel,.login-intelligence{border-radius:30px;box-shadow:0 22px 55px rgba(30,38,50,.075)}
+        .login-intelligence{background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(248,246,252,.92))}
+        .login-ai-orb{background:conic-gradient(from 210deg,#17213b,#78959a,#c9b6ed,#17213b);box-shadow:0 12px 30px rgba(83,82,110,.20)}
+        .login-metric strong{font-size:1.42rem}
+        .login-how{background:linear-gradient(135deg,#fbfaf7,#f4f1fa)}
+
+        @media(max-width:900px){body:has(.login-page-marker) .block-container{padding:0 .8rem 2.5rem}.login-topbar{height:65px}.login-top-note{display:none}.login-hero{min-height:510px;border-radius:23px}.login-hero-photo{background-position:65% center}.login-hero-content{padding:2.5rem 1.5rem}.login-hero-content h1{font-size:2.55rem!important}.login-feature-grid{grid-template-columns:1fr;gap:.55rem}.login-feature{min-height:auto;padding:.75rem}.login-workspace{grid-template-columns:1fr}.login-how-grid{grid-template-columns:1fr}}
+        @media(max-width:520px){.login-panel,.login-intelligence{padding:1.15rem;border-radius:21px}.login-metrics{grid-template-columns:1fr 1fr}.login-welcome-card h2{font-size:1.7rem!important}}
+        
         /* Sidebar: editorial / premium SaaS navigation */
         section[data-testid="stSidebar"]{background:#f1f0eb;border-right:1px solid #dcd9d1}
         section[data-testid="stSidebar"][aria-expanded="true"]{min-width:355px!important;width:355px!important}
@@ -133,6 +221,93 @@ def inject_custom_css():
         .discover-title{font-family:'Manrope';font-weight:800;font-size:1rem;letter-spacing:-.02em;margin-top:.25rem}
         .discover-kicker{color:#7661a0!important;font-size:.7rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-top:2.2rem}
         .info-card{background:#fff;border:1px solid #dedbd4;border-radius:20px;padding:1.25rem;box-shadow:0 12px 30px rgba(30,29,26,.05)}
+
+        /* Smart requirement comparison */
+        .match-summary{position:relative;overflow:hidden;margin:.2rem 0 .75rem;padding:1.25rem 1.35rem;border:1px solid rgba(39,61,112,.16);border-radius:22px;background:linear-gradient(135deg,#ffffff 0%,#f6f3ff 55%,#eef6f2 100%);box-shadow:0 14px 35px rgba(39,61,112,.07)}
+        .match-summary:after{content:'✦';position:absolute;right:22px;top:12px;font-size:3.4rem;color:#c8b7eb;opacity:.45}
+        .match-summary-title{font-family:'Manrope',sans-serif;font-size:1.35rem;font-weight:800;letter-spacing:-.04em;color:#17213b}
+        .match-summary-sub{margin-top:.35rem;color:#666a76;font-size:.88rem;line-height:1.5}
+        .match-summary-sub strong{color:#24375e}
+        .match-table{width:100%;border:1px solid #dfe2e8;border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 14px 35px rgba(25,35,55,.07);margin:.7rem 0 1rem}
+        .match-row{display:grid;grid-template-columns:1.25fr .9fr .9fr;align-items:center;min-height:62px;padding:0 1.2rem;border-top:1px solid #e8e9ed;gap:1rem}
+        .match-row:first-child{border-top:0}
+        .match-head{min-height:48px;background:#17213b;color:#fff;border-top:0;font-size:.68rem;font-weight:800;letter-spacing:.12em}
+        .match-head div:nth-child(2),.match-head div:nth-child(3){text-align:right}
+        .match-label{font-size:.88rem;font-weight:650;color:#333a4b}
+        .match-yours{text-align:right;font-size:.9rem;font-weight:700;color:#596071}
+        .match-supplier{text-align:right;font-size:.94rem;font-weight:800;color:#2f7057}
+        .match-good{background:linear-gradient(90deg,#fff 0%,#fbfcfd 58%,#f2faf5 100%)}
+        .match-good:hover{background:linear-gradient(90deg,#fff 0%,#f8f7ff 55%,#edf8f1 100%)}
+        .smart-preview.good{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:1rem;padding:1rem 1.2rem;border-radius:18px;background:linear-gradient(100deg,#f3faf6,#eef6f2);border:1px solid #c9dfd2;box-shadow:0 10px 26px rgba(58,111,83,.07)}
+        .smart-preview.good .preview-score{min-width:78px;width:78px;height:58px;border-radius:16px;background:#fff;border:1px solid #d8e7dd;justify-content:center;align-items:center;gap:.3rem;box-shadow:0 6px 15px rgba(48,95,70,.06)}
+        .smart-preview.good .preview-score strong{color:#3b7d5e;font-size:1.65rem}
+        .smart-preview.good .preview-score span{text-transform:uppercase;letter-spacing:.07em;font-size:.56rem;font-weight:800;color:#668072}
+        .smart-preview.good b{font-size:.88rem;color:#244d3b}
+        .smart-preview.good p{font-size:.76rem;color:#6b776f}
+        .smart-preview.good .preview-pill{background:#263d35;padding:.55rem .85rem;font-size:.72rem;box-shadow:0 7px 15px rgba(25,51,41,.12)}
+
+        /* Premium login page */
+        body:has(.login-page-marker) .stApp{
+            background-image:linear-gradient(135deg,rgba(246,243,236,.96),rgba(237,241,239,.94)),url('https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1800&q=85');
+            background-size:cover;background-position:center;background-attachment:fixed;
+        }
+        body:has(.login-page-marker) .block-container{max-width:1220px;padding:2.2rem 2.2rem 4rem}
+        body:has(.login-page-marker) h1{font-size:2rem!important;color:#18243d!important;margin-bottom:.1rem!important}
+        body:has(.login-page-marker) .stCaption{color:#6e746f!important}
+        body:has(.login-page-marker) div[data-testid="stImage"]{border-radius:28px;overflow:hidden;box-shadow:0 25px 60px rgba(30,42,58,.18);margin-bottom:1.1rem}
+        body:has(.login-page-marker) div[data-testid="stImage"] img{border-radius:28px;max-height:310px;object-fit:cover}
+        body:has(.login-page-marker) div[data-testid="stMetric"]{background:rgba(255,255,255,.86);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.8);border-top:3px solid #273d70;border-radius:18px;min-height:92px;padding:.8rem 1rem;box-shadow:0 12px 30px rgba(30,42,58,.07)}
+        body:has(.login-page-marker) .stTabs{background:rgba(255,255,255,.82);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.85);border-radius:26px;padding:1.25rem;box-shadow:0 25px 60px rgba(30,42,58,.12)}
+        body:has(.login-page-marker) [data-baseweb="tab-list"]{background:#ececf0;border-radius:14px;padding:.25rem}
+        body:has(.login-page-marker) [data-baseweb="tab"]{border-radius:10px;color:#6e7180!important;font-weight:750}
+        body:has(.login-page-marker) [data-baseweb="tab"][aria-selected="true"]{background:#17213b!important;color:#fff!important}
+        body:has(.login-page-marker) div[data-testid="stForm"]{border:0!important;background:transparent!important;padding:.8rem .15rem .1rem!important;box-shadow:none!important}
+        body:has(.login-page-marker) div[data-baseweb="input"]{background:#fff!important;border:1px solid #d9dce2!important;border-radius:13px!important;min-height:48px}
+        body:has(.login-page-marker) div[data-baseweb="input"]:focus-within{border-color:#536c91!important;box-shadow:0 0 0 3px rgba(83,108,145,.12)!important}
+        body:has(.login-page-marker) div[data-baseweb="input"] input{color:#17213b!important}
+        body:has(.login-page-marker) div[data-testid="stFormSubmitButton"] button{background:#17213b!important;color:#fff!important;border:0!important;border-radius:14px!important;min-height:50px!important;font-weight:800!important;box-shadow:0 12px 25px rgba(23,33,59,.18)!important}
+        body:has(.login-page-marker) div[data-testid="stFormSubmitButton"] button:hover{background:#273d70!important;transform:translateY(-1px)!important}
+        body:has(.login-page-marker) .stSelectbox div[data-baseweb="select"]>div{background:#fff!important;border:1px solid #d9dce2!important;border-radius:13px!important}
+        body:has(.login-page-marker) .stMarkdown h2{font-size:2rem!important;color:#17213b!important}
+        body:has(.login-page-marker) .stAlert{border-radius:14px!important}
+
+        /* Smart Recommendation visual refresh */
+        body:has(.login-page-marker) .stApp{background:radial-gradient(circle at 12% 10%,rgba(121,149,154,.16),transparent 25%),radial-gradient(circle at 88% 8%,rgba(201,182,237,.22),transparent 28%),#f7f6f2}
+        .login-hero{min-height:465px;border-radius:34px;background:#111b33;box-shadow:0 28px 75px rgba(23,33,59,.20)}
+        .login-hero-photo{background-image:linear-gradient(90deg,rgba(10,19,35,.96) 0%,rgba(10,19,35,.82) 34%,rgba(10,19,35,.40) 68%,rgba(10,19,35,.16) 100%),url("https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=2200&q=92");background-position:center 48%;}
+        .login-hero-overlay{background:radial-gradient(circle at 78% 24%,rgba(201,182,237,.34),transparent 25%),radial-gradient(circle at 66% 90%,rgba(120,149,154,.25),transparent 28%)}
+        .login-hero-content{max-width:760px;padding:4.6rem 4.2rem}
+        .login-eyebrow{background:rgba(201,182,237,.13);border-color:rgba(201,182,237,.34);color:#e5dbf5}
+        .login-hero-content h1{font-size:clamp(2.8rem,5.5vw,4.8rem)!important}
+        .login-hero-content h1 span{color:#d6c4ef}
+        .login-feature-grid{grid-template-columns:repeat(3,1fr);gap:.85rem}
+        .login-feature{background:rgba(255,255,255,.075);border-color:rgba(255,255,255,.16);border-radius:19px}
+        .login-feature b{color:#d6c4ef}
+        .login-panel,.login-intelligence{border-radius:30px;box-shadow:0 22px 55px rgba(30,38,50,.075)}
+        .login-intelligence{background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(248,246,252,.92))}
+        .login-ai-orb{background:conic-gradient(from 210deg,#17213b,#78959a,#c9b6ed,#17213b);box-shadow:0 12px 30px rgba(83,82,110,.20)}
+        .login-metric strong{font-size:1.42rem}
+        .login-how{background:linear-gradient(135deg,#fbfaf7,#f4f1fa)}
+
+        @media(max-width:900px){.match-row{grid-template-columns:1.1fr .9fr .9fr;padding:0 .75rem;gap:.5rem}.match-label,.match-yours,.match-supplier{font-size:.76rem}.login-side{min-height:420px}.login-form-title{margin-top:1.5rem}}
+        /* Smart Recommendation visual refresh */
+        body:has(.login-page-marker) .stApp{background:radial-gradient(circle at 12% 10%,rgba(121,149,154,.16),transparent 25%),radial-gradient(circle at 88% 8%,rgba(201,182,237,.22),transparent 28%),#f7f6f2}
+        .login-hero{min-height:465px;border-radius:34px;background:#111b33;box-shadow:0 28px 75px rgba(23,33,59,.20)}
+        .login-hero-photo{background-image:linear-gradient(90deg,rgba(10,19,35,.96) 0%,rgba(10,19,35,.82) 34%,rgba(10,19,35,.40) 68%,rgba(10,19,35,.16) 100%),url("https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=2200&q=92");background-position:center 48%;}
+        .login-hero-overlay{background:radial-gradient(circle at 78% 24%,rgba(201,182,237,.34),transparent 25%),radial-gradient(circle at 66% 90%,rgba(120,149,154,.25),transparent 28%)}
+        .login-hero-content{max-width:760px;padding:4.6rem 4.2rem}
+        .login-eyebrow{background:rgba(201,182,237,.13);border-color:rgba(201,182,237,.34);color:#e5dbf5}
+        .login-hero-content h1{font-size:clamp(2.8rem,5.5vw,4.8rem)!important}
+        .login-hero-content h1 span{color:#d6c4ef}
+        .login-feature-grid{grid-template-columns:repeat(3,1fr);gap:.85rem}
+        .login-feature{background:rgba(255,255,255,.075);border-color:rgba(255,255,255,.16);border-radius:19px}
+        .login-feature b{color:#d6c4ef}
+        .login-panel,.login-intelligence{border-radius:30px;box-shadow:0 22px 55px rgba(30,38,50,.075)}
+        .login-intelligence{background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(248,246,252,.92))}
+        .login-ai-orb{background:conic-gradient(from 210deg,#17213b,#78959a,#c9b6ed,#17213b);box-shadow:0 12px 30px rgba(83,82,110,.20)}
+        .login-metric strong{font-size:1.42rem}
+        .login-how{background:linear-gradient(135deg,#fbfaf7,#f4f1fa)}
+
         @media(max-width:900px){.block-container{padding:1.2rem .8rem 3rem}.page-hero{padding:1.7rem;min-height:240px}.page-hero h1{font-size:2rem!important}.page-hero:after{right:-20px;opacity:.65}.page-hero p{font-size:.9rem}}
                 .smart-search-banner{display:flex;justify-content:space-between;align-items:center;gap:2rem;padding:1.55rem 1.7rem;margin:.4rem 0 1.25rem;border:1px solid #d9d6ce;border-radius:26px;background:linear-gradient(110deg,#ffffff 0%,#f4f1fa 56%,#e5eff0 100%);box-shadow:0 18px 45px rgba(31,31,28,.07)}
         .smart-search-banner h2{font-family:'Manrope',sans-serif;font-size:2rem;letter-spacing:-.045em;margin:.25rem 0 .35rem}.smart-search-banner p{color:#68655f;margin:0;max-width:720px}
@@ -140,7 +315,7 @@ def inject_custom_css():
         .smart-section-label{font-size:.68rem;font-weight:800;letter-spacing:.17em;color:#806e9f;margin:1.45rem 0 .7rem;text-transform:uppercase}.form-mini-title{font-size:.68rem;letter-spacing:.14em;font-weight:800;color:#77746f;margin:.2rem 0 .5rem}
         .smart-preview{display:flex;align-items:center;gap:1rem;padding:1rem 1.1rem;margin:1rem 0;border-radius:18px;border:1px solid #d9d6ce;background:#fbfaf7}.smart-preview.warning{background:#fffaf0;border-color:#ead9b1}.smart-preview.good{background:#f4faf5;border-color:#cfe0d2}.preview-score{display:flex;align-items:baseline;gap:.4rem;min-width:90px}.preview-score strong{font-family:'Manrope',sans-serif;font-size:2rem}.preview-score span{font-size:.68rem;color:#77746f;line-height:1.05}.smart-preview p{margin:.18rem 0 0;color:#6d6962;font-size:.82rem}.preview-pill{margin-left:auto;border-radius:999px;background:#111;color:#fff;padding:.45rem .7rem;font-size:.68rem;font-weight:700}
         .empty-smart-state{text-align:center;padding:3rem 1rem;border:1px dashed #d2cec4;border-radius:24px;background:rgba(255,255,255,.5);margin-top:1rem}.empty-smart-state span{font-size:2rem}.empty-smart-state h3{font-family:'Manrope',sans-serif;margin:.5rem 0 .2rem}.empty-smart-state p{color:#77746f;margin:0}.supplier-result-head{display:flex;align-items:center;gap:.8rem}.supplier-result-head h3{margin:0;font-family:'Manrope',sans-serif}.supplier-result-head p{margin:.15rem 0 0;color:#77746f;font-size:.8rem}.rank-badge{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#111;color:#fff;font-weight:800}.match-score{text-align:right}.match-score span{display:block;font-size:.55rem;letter-spacing:.12em;color:#8172a0;font-weight:800}.match-score strong{font-family:'Manrope',sans-serif;font-size:2rem}.match-score small{color:#77746f}.reason-card{margin:.7rem 0 0;padding:.75rem .9rem;border-radius:14px;background:#f7f5f0;border:1px solid #e3dfd6;display:flex;gap:.5rem;font-size:.82rem}.reason-card b{white-space:nowrap}.reason-card span{color:#68655f}
-</style>
+\n        /* FINAL CLEAN LOGIN DESIGN - overrides all older login styles */\n        body:has(.login-page-marker) .stApp{min-height:100vh!important;background:linear-gradient(90deg,rgba(8,18,31,.91) 0%,rgba(8,18,31,.80) 35%,rgba(8,18,31,.48) 68%,rgba(8,18,31,.20) 100%),url("https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=2200&q=90") center/cover fixed!important}\n        body:has(.login-page-marker) .stApp>header{display:none!important}\n        body:has(.login-page-marker) .block-container{max-width:1400px!important;padding:0 5vw 0!important}\n        body:has(.login-page-marker) .clean-login-left{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:55px 0;color:#fff}\n        body:has(.login-page-marker) .clean-login-brand{display:flex;align-items:center;gap:13px;margin-bottom:60px}\n        body:has(.login-page-marker) .clean-brand-logo{width:52px;height:52px;display:grid;place-items:center;border-radius:17px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.25);box-shadow:0 12px 30px rgba(0,0,0,.16);backdrop-filter:blur(14px);font-size:22px}\n        body:has(.login-page-marker) .clean-brand-name{color:#fff!important;font-family:'Manrope',sans-serif;font-size:1.3rem;line-height:1;font-weight:850;letter-spacing:-.04em}\n        body:has(.login-page-marker) .clean-brand-name span{color:#b9d7d2!important}\n        body:has(.login-page-marker) .clean-brand-subtitle{margin-top:6px;color:rgba(255,255,255,.58)!important;font-size:.55rem;font-weight:800;letter-spacing:.16em}\n        body:has(.login-page-marker) .clean-eyebrow{display:inline-flex;width:max-content;padding:9px 15px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.20);color:#dbe9e7!important;font-size:.62rem;font-weight:850;letter-spacing:.14em;backdrop-filter:blur(12px)}\n        body:has(.login-page-marker) .clean-main-title{margin:25px 0 0!important;color:#fff!important;font-family:'Manrope',sans-serif!important;font-size:clamp(3.2rem,5.7vw,5.8rem)!important;line-height:.95!important;font-weight:850!important;letter-spacing:-.07em!important;text-shadow:0 4px 25px rgba(0,0,0,.20)}\n        body:has(.login-page-marker) .clean-main-title span{color:#b9d7d2!important}\n        body:has(.login-page-marker) .clean-main-description{max-width:620px;margin:28px 0 0;color:rgba(255,255,255,.80)!important;font-size:.98rem;line-height:1.75}\n        body:has(.login-page-marker) .clean-benefits{display:flex;flex-wrap:wrap;gap:10px;margin-top:34px}\n        body:has(.login-page-marker) .clean-benefit{display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(12px);color:#fff!important;font-size:.68rem;font-weight:800}\n        body:has(.login-page-marker) .benefit-icon{width:21px;height:21px;display:grid;place-items:center;border-radius:50%;background:#b9d7d2;color:#142033!important;font-size:.65rem;font-weight:900}\n        body:has(.login-page-marker) .clean-card-heading,body:has(.login-page-marker) .stTabs{max-width:450px;margin-left:auto;margin-right:auto}\n        body:has(.login-page-marker) .clean-card-heading{margin-top:60px;padding:36px 38px 0;background:rgba(255,255,255,.96);border-radius:34px 34px 0 0;border:1px solid rgba(255,255,255,.8);border-bottom:0;box-shadow:0 -20px 60px rgba(0,0,0,.17)}\n        body:has(.login-page-marker) .clean-card-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;background:#e7f0ef;color:#2c5660!important;font-size:18px;margin-bottom:18px}\n        body:has(.login-page-marker) .clean-card-heading h2{margin:0!important;color:#142033!important;font-family:'Manrope',sans-serif!important;font-size:2rem!important;font-weight:850!important;letter-spacing:-.05em!important}\n        body:has(.login-page-marker) .clean-card-heading p{margin:8px 0 0;color:#747c85!important;font-size:.80rem;line-height:1.55}\n        body:has(.login-page-marker) .stTabs{margin-top:0!important;padding:22px 38px 36px!important;background:rgba(255,255,255,.96)!important;border-radius:0 0 34px 34px!important;border:1px solid rgba(255,255,255,.8)!important;border-top:0!important;box-shadow:0 30px 70px rgba(0,0,0,.22)!important}\n        body:has(.login-page-marker) [data-baseweb="tab-list"]{display:flex!important;gap:5px!important;padding:5px!important;border:0!important;border-radius:999px!important;background:#edf0f1!important}\n        body:has(.login-page-marker) [data-baseweb="tab"]{flex:1!important;min-height:44px!important;border-radius:999px!important;color:#747c85!important;font-size:.73rem!important;font-weight:850!important}\n        body:has(.login-page-marker) [data-baseweb="tab"][aria-selected="true"]{background:#142033!important;color:#fff!important;box-shadow:0 7px 18px rgba(20,32,51,.18)!important}\n        body:has(.login-page-marker) div[data-testid="stForm"]{padding:18px 0 0!important;border:0!important;background:transparent!important;box-shadow:none!important}\n        body:has(.login-page-marker) label{color:#343d48!important;font-size:.70rem!important;font-weight:800!important}\n        body:has(.login-page-marker) div[data-baseweb="input"]{min-height:52px!important;background:#f8f9fa!important;border:1px solid #dfe3e7!important;border-radius:17px!important;box-shadow:none!important}\n        body:has(.login-page-marker) div[data-baseweb="input"] input{color:#142033!important;font-size:.85rem!important;font-weight:600!important}\n        body:has(.login-page-marker) div[data-baseweb="input"] input::placeholder{color:#9aa2aa!important;opacity:1!important}\n        body:has(.login-page-marker) div[data-baseweb="input"]:focus-within{background:#fff!important;border-color:#6c8f8d!important;box-shadow:0 0 0 4px rgba(108,143,141,.12)!important}\n        body:has(.login-page-marker) .stSelectbox div[data-baseweb="select"]>div{min-height:52px!important;background:#f8f9fa!important;border:1px solid #dfe3e7!important;border-radius:17px!important;color:#142033!important}\n        body:has(.login-page-marker) div[data-testid="stFormSubmitButton"] button{width:100%!important;min-height:55px!important;margin-top:9px!important;border:0!important;border-radius:999px!important;background:linear-gradient(135deg,#142033,#2c5660)!important;color:#fff!important;font-size:.82rem!important;font-weight:850!important;box-shadow:0 14px 28px rgba(20,32,51,.22)!important;transition:all .2s ease!important}\n        body:has(.login-page-marker) div[data-testid="stFormSubmitButton"] button:hover{transform:translateY(-2px)!important;background:linear-gradient(135deg,#1c3048,#356a70)!important;box-shadow:0 18px 35px rgba(20,32,51,.28)!important}\n        body:has(.login-page-marker) .stAlert{border-radius:16px!important}\n        @media(max-width:900px){body:has(.login-page-marker) .block-container{padding:0 18px 25px!important}body:has(.login-page-marker) .clean-login-left{min-height:auto;padding:35px 0 15px;text-align:center;align-items:center}body:has(.login-page-marker) .clean-login-brand{margin-bottom:35px}body:has(.login-page-marker) .clean-main-title{font-size:3rem!important}body:has(.login-page-marker) .clean-main-description{font-size:.88rem}body:has(.login-page-marker) .clean-benefits{justify-content:center}body:has(.login-page-marker) .clean-card-heading{margin-top:20px}}\n        @media(max-width:520px){body:has(.login-page-marker) .clean-main-title{font-size:2.55rem!important}body:has(.login-page-marker) .clean-card-heading{padding:28px 23px 0;border-radius:27px 27px 0 0}body:has(.login-page-marker) .stTabs{padding:18px 23px 28px!important;border-radius:0 0 27px 27px!important}body:has(.login-page-marker) .clean-benefit{width:100%;justify-content:center}}\n</style>
         """, unsafe_allow_html=True,
     )
 
@@ -917,40 +1092,101 @@ def explain_supplier(row, budget=None, deadline=None):
 
 
 def explain_best_requirement_match(row, brief, result_count):
+    """Render the best-match comparison using Streamlit native components.
+
+    This intentionally avoids injecting the table as raw HTML because Streamlit
+    can display HTML literally depending on the rendering context/version.
+    """
     budget = float(brief.get("budget", 0) or 0)
     quantity = int(brief.get("quantity", 0) or 0)
     min_quality = float(brief.get("quality", 0) or 0)
     deadline = float(brief.get("deadline", 0) or 0)
     requested_count = int(brief.get("requested_supplier_count", result_count) or result_count)
 
-    supplier = row.get("supplier", "Selected supplier")
-    category = row.get("product_category", brief.get("category", "selected category"))
+    supplier = str(row.get("supplier", "Selected supplier"))
+    category = str(row.get("product_category", brief.get("category", "selected category")))
     supplier_price = float(row.get("avg_unit_price", 0) or 0)
     supplier_quantity = int(float(row.get("total_quantity", 0) or 0))
     supplier_quality = float(row.get("quality_rating", row.get("final_rating", 0)) or 0)
     supplier_delay = float(row.get("avg_delay", 0) or 0)
     final_score = float(row.get("final_score", 0) or 0)
-    risk_level_value = row.get("risk_level", "N/A")
+    risk_level_value = str(row.get("risk_level", "N/A"))
 
-    budget_status = "fits your budget" if budget <= 0 or supplier_price <= budget else "is above your budget"
-    quantity_status = "can handle your quantity" if supplier_quantity >= quantity else "has lower historical capacity than your quantity"
-    quality_status = "meets your quality requirement" if supplier_quality >= min_quality else "is below your quality requirement"
-    deadline_status = "fits your delivery deadline" if supplier_delay <= deadline else "is slower than your deadline"
+    budget_status = "Fits your budget" if budget <= 0 or supplier_price <= budget else "Above your budget"
+    quantity_status = "Capacity matched" if supplier_quantity >= quantity else "Lower historical capacity"
+    quality_status = "Quality matched" if supplier_quality >= min_quality else "Below quality target"
+    deadline_status = "Delivery matched" if supplier_delay <= deadline else "Slower than deadline"
 
-    return f"""
-**Why {supplier}?** Best match for **{category}** with **{final_score:.0f}/100** score and **{risk_level_value}** risk.
+    # Summary card: native Streamlit text, so it can never fall back to raw HTML.
+    st.markdown(
+        f"### Why **{supplier}**?"
+        f"  \nBest match for **{category}** · **{final_score:.0f}/100** match score · **{risk_level_value}** risk"
+    )
 
-| Requirement | Yours | Supplier |
-|---|---:|---:|
-| Budget per unit | **${budget:,.2f}** | **${supplier_price:,.2f}** |
-| Quantity | **{quantity:,}** | **{supplier_quantity:,} handled** |
-| Quality rating | **{min_quality:.1f}/5** | **{supplier_quality:.1f}/5** |
-| Delivery delay | **{deadline:.0f} days max** | **{supplier_delay:.1f} days avg** |
+    comparison = pd.DataFrame(
+        [
+            ["Budget per unit", f"${budget:,.2f}", f"${supplier_price:,.2f}"],
+            ["Quantity", f"{quantity:,}", f"{supplier_quantity:,} handled"],
+            ["Quality rating", f"{min_quality:.1f}/5", f"{supplier_quality:.1f}/5"],
+            ["Delivery delay", f"{deadline:.0f} days max", f"{supplier_delay:.1f} days avg"],
+        ],
+        columns=["REQUIREMENT", "YOUR TARGET", "SUPPLIER"],
+    )
 
-Result: {budget_status}, {quantity_status}, {quality_status}, and {deadline_status}. Found **{result_count}/{requested_count}** supplier(s).
-"""
+    # Pandas Styler gives us a real HTML table through st.table, not literal HTML text.
+    styled = (
+        comparison.style
+        .hide(axis="index")
+        .set_properties(
+            subset=["REQUIREMENT"],
+            **{"font-weight": "600", "color": "#26324a", "text-align": "left"},
+        )
+        .set_properties(
+            subset=["YOUR TARGET"],
+            **{"font-weight": "700", "color": "#5f6878", "text-align": "right"},
+        )
+        .set_properties(
+            subset=["SUPPLIER"],
+            **{"font-weight": "800", "color": "#2f7658", "text-align": "right", "background-color": "#f1faf5"},
+        )
+        .set_table_styles(
+            [
+                {"selector": "table", "props": [
+                    ("width", "100%"), ("border-collapse", "separate"),
+                    ("border-spacing", "0"), ("border", "1px solid #dfe3e8"),
+                    ("border-radius", "18px"), ("overflow", "hidden"),
+                    ("background", "#ffffff"), ("box-shadow", "0 14px 35px rgba(25,35,55,.07)"),
+                ]},
+                {"selector": "thead th", "props": [
+                    ("background", "#17213b"), ("color", "#ffffff"),
+                    ("font-size", "12px"), ("font-weight", "800"),
+                    ("letter-spacing", "1.2px"), ("padding", "15px 18px"),
+                    ("border", "none"), ("text-align", "right"),
+                ]},
+                {"selector": "thead th:first-child", "props": [("text-align", "left")]},
+                {"selector": "tbody td", "props": [
+                    ("padding", "17px 18px"), ("border-top", "1px solid #e8ebef"),
+                    ("font-size", "14px"), ("background", "#ffffff"),
+                ]},
+                {"selector": "tbody tr:hover td", "props": [("background", "#faf9ff")]},
+            ]
+        )
+    )
+    st.table(styled)
 
+    # Match status card using native columns.
+    c1, c2, c3 = st.columns([0.75, 3.0, 0.85])
+    with c1:
+        st.markdown("**✓**  \n*BEST MATCH*")
+    with c2:
+        st.markdown(f"**{budget_status} · {quantity_status}**")
+        st.caption(f"{quality_status} · {deadline_status} · Showing {result_count}/{requested_count} supplier(s)")
+    with c3:
+        st.markdown(f"### {final_score:.0f}/100")
 
+# Columns required by the supplier recommendation engine.
+# Keep this definition before validate_recommendation_input() so the
+# Find Supplier page can validate the metrics dataframe without a NameError.
 RECOMMENDATION_REQUIRED_COLUMNS = {
     "supplier",
     "product_category",
@@ -962,7 +1198,6 @@ RECOMMENDATION_REQUIRED_COLUMNS = {
     "avg_unit_price",
     "total_quantity",
 }
-
 
 def validate_recommendation_input(metrics_df, priority):
     if metrics_df.empty:
@@ -1164,52 +1399,90 @@ def remove_hot_supplier(db, username, supplier, product_category):
 
 
 def page_login(db):
-    page_header("Login")
-    login_tab, signup_tab = st.tabs(["Login", "Sign Up"])
+    """Clean modern SupplyLogix login and account creation page."""
+    st.markdown('<div class="login-page-marker"></div>', unsafe_allow_html=True)
 
-    with login_tab:
-        with st.form("login_form"):
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-            submitted = st.form_submit_button("Login")
-        if submitted:
-            user = db[COLLECTIONS["users"]].find_one(
-                {"username": username.strip(), "password_hash": password_hash(password)}
-            )
-            if user:
-                if user.get("role") == "supplier" and user.get("account_status", "pending") != "approved":
+    left, right = st.columns([1.12, 0.88], gap="large")
+
+    with left:
+        st.markdown("""
+        <div class="clean-login-left">
+            <div class="clean-login-brand">
+                <div class="clean-brand-logo">🚚</div>
+                <div>
+                    <div class="clean-brand-name">Supply<span>Logix</span></div>
+                    <div class="clean-brand-subtitle">AI SUPPLIER INTELLIGENCE</div>
+                </div>
+            </div>
+            <div class="clean-eyebrow">✦ SMART RECOMMENDATION PLATFORM</div>
+            <h1 class="clean-main-title">Find smarter.<br><span>Buy with confidence.</span></h1>
+            <p class="clean-main-description">
+                Turn supplier data into better procurement decisions. Compare performance,
+                detect risk, and discover the strongest supplier match for every requirement.
+            </p>
+            <div class="clean-benefits">
+                <div class="clean-benefit"><div class="benefit-icon">✓</div><b>Smart Supplier Matching</b></div>
+                <div class="clean-benefit"><div class="benefit-icon">✓</div><b>Risk Analysis</b></div>
+                <div class="clean-benefit"><div class="benefit-icon">✓</div><b>Performance Insights</b></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with right:
+        st.markdown("""
+        <div class="clean-card-heading">
+            <div class="clean-card-icon">✦</div>
+            <h2>Welcome back</h2>
+            <p>Sign in to continue to your supplier intelligence workspace.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        login_tab, signup_tab = st.tabs(["Sign in", "Create account"])
+
+        with login_tab:
+            with st.form("login_form", clear_on_submit=False):
+                username = st.text_input("Username", placeholder="Enter your username", key="login_username")
+                password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
+                submitted = st.form_submit_button("Sign in  →", use_container_width=True)
+
+            if submitted:
+                user = db[COLLECTIONS["users"]].find_one({
+                    "username": username.strip(),
+                    "password_hash": password_hash(password),
+                })
+                if not user:
+                    st.error("Invalid username or password.")
+                elif user.get("role") == "supplier" and user.get("account_status", "pending") != "approved":
                     st.warning("Your supplier account is waiting for admin approval.")
-                    return
-                if not user.get("is_active", False):
+                elif not user.get("is_active", False):
                     st.error("This account is inactive. Please contact admin.")
-                    return
-                st.session_state["user"] = session_user_from_doc(user)
-                create_login_session(db, user)
-                st.rerun()
-            st.error("Invalid username or password.")
+                else:
+                    st.session_state["user"] = session_user_from_doc(user)
+                    create_login_session(db, user)
+                    st.rerun()
 
-    with signup_tab:
-        with st.form("signup_form"):
-            new_username = st.text_input("New Username")
-            new_password = st.text_input("New Password", type="password")
-            confirm_password = st.text_input("Confirm Password", type="password")
-            role = st.selectbox("Account Type", ["user", "supplier"])
-            supplier_id = ""
-            verification_code = ""
-            if role == "supplier":
-                supplier_id = st.text_input("Supplier ID", placeholder="Example: S31")
-                verification_code = st.text_input("Supplier Verification Code", placeholder="Example: S10-ABC123")
-                st.caption("Supplier accounts are created as pending until admin approval.")
-            signup_submitted = st.form_submit_button("Create Account")
-        if signup_submitted:
-            success, message = create_account(db, new_username, new_password, confirm_password, role, supplier_id, verification_code)
-            if success:
-                st.success(message)
-            else:
-                st.error(message)
-    st.info("Demo accounts: admin/admin123, user/user123, supplier_s31/supplier123, supplier_s12/supplier123, supplier_s10/supplier123")
+        with signup_tab:
+            with st.form("signup_form", clear_on_submit=False):
+                new_username = st.text_input("Username", placeholder="Choose a username", key="signup_username")
+                new_password = st.text_input("Password", type="password", placeholder="Minimum 6 characters", key="signup_password")
+                confirm_password = st.text_input("Confirm password", type="password", placeholder="Re-enter password", key="signup_confirm_password")
+                role = st.selectbox("Account type", ["user", "supplier"], key="signup_role")
+                supplier_id = ""
+                verification_code = ""
+                if role == "supplier":
+                    supplier_id = st.text_input("Supplier ID", placeholder="Example: S31", key="signup_supplier_id")
+                    verification_code = st.text_input("Verification code", placeholder="Example: S10-ABC123", key="signup_verification_code")
+                signup_submitted = st.form_submit_button("Create account  →", use_container_width=True)
 
-
+            if signup_submitted:
+                success, message = create_account(
+                    db, new_username, new_password, confirm_password,
+                    role, supplier_id, verification_code
+                )
+                if success:
+                    st.success(message)
+                else:
+                    st.error(message)
 def alert_rows(metrics_df):
     if metrics_df.empty:
         return []
@@ -1632,18 +1905,12 @@ def page_eda(db):
 
     if eda_mode == "Product Trend":
         trends_df = load_product_trends()
-        st.subheader("Product Trend")
         if trends_df.empty:
             st.info("No product trend dataset found. Use Upload Data > Product Trend first.")
             return
 
         latest_month = trends_df["month"].max()
         latest_df = trends_df[trends_df["month"] == latest_month].copy()
-        p1, p2, p3, p4 = st.columns(4)
-        p1.metric("Trend Rows", len(trends_df))
-        p2.metric("Categories", trends_df["product_category"].nunique())
-        p3.metric("Products", trends_df["product_name"].nunique())
-        p4.metric("Latest Month", latest_month)
 
         chart1, chart2 = st.columns(2)
         with chart1:
@@ -2650,7 +2917,7 @@ def page_user_home(db):
     st.subheader("Favourite Supplier")
     hot_df = dataframe_from_collection(db, HOT_SUPPLIERS_COLLECTION, {"username": st.session_state["user"]["username"]})
     if hot_df.empty:
-        st.info("No favourite supplier yet. Use the star button in Find Supplier to save one.")
+        st.info("No favourite supplier yet. Use the star button in Supplier Recommendation to save one.")
     else:
         if "created_at" in hot_df.columns:
             hot_df = hot_df.sort_values("created_at", ascending=False)
@@ -2682,7 +2949,7 @@ def page_user_home(db):
 
 
 def page_find_supplier(db):
-    page_header("Find Supplier")
+    page_header("Supplier Recommendation")
     metrics_df = load_supplier_metrics(db)
     if metrics_df.empty:
         st.warning("Admin must clean data first.")
@@ -2693,7 +2960,7 @@ def page_find_supplier(db):
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
     st.markdown("""
-    <div class="smart-search-banner"><div><div class="ui-kicker">SMART PROCUREMENT</div><h2>Build your supplier brief</h2><p>Set your business requirements once. SupplyLogix will filter, score, compare and explain the strongest matches.</p></div><div class="smart-ai-orb"><span>✦</span><small>SMART<br>MATCH</small></div></div>
+    <div class="smart-search-banner"><div><div class="ui-kicker">SMART RECOMMENDATION</div><h2>Build your supplier brief</h2><p>Set your business requirements once. SupplyLogix will filter, score, compare and explain the strongest matches.</p></div><div class="smart-ai-orb"><span>✦</span><small>SMART<br>MATCH</small></div></div>
     """, unsafe_allow_html=True)
     st.markdown('<div class="smart-section-label">01 · CHOOSE YOUR BUYING STRATEGY</div>', unsafe_allow_html=True)
     cols=st.columns(5); presets=[("Balanced","⚖️","Best overall"),("Low Cost","◈","Protect budget"),("High Quality","✦","Max quality"),("Fast Delivery","↗","Meet deadline"),("Low Risk","◉","Reduce risk")]
@@ -2737,7 +3004,7 @@ def page_find_supplier(db):
     if results.empty:
         st.markdown("""<div class="empty-smart-state"><span>✦</span><h3>Your shortlist will appear here</h3><p>Choose your strategy and requirements above, then let SupplyLogix rank the best-fit suppliers.</p></div>""",unsafe_allow_html=True); return
     brief=st.session_state.get("last_search_brief",{}); st.markdown('<div class="smart-section-label">03 · MOST MATCHED REQUIREMENT</div>',unsafe_allow_html=True)
-    st.markdown(explain_best_requirement_match(results.iloc[0], brief, len(results)))
+    explain_best_requirement_match(results.iloc[0], brief, len(results))
     current_hot=hot_supplier_keys(db,username)
     for rank,(_,row) in enumerate(results.iterrows(),start=1):
         score=float(row["final_score"]); risk=str(row["risk_level"])
@@ -2756,6 +3023,242 @@ def page_find_supplier(db):
                 else: save_hot_supplier(db,username,row); log_activity(db,"favourite_supplier_saved",username,{"supplier":row["supplier"],"category":row["product_category"]})
                 st.rerun()
     st.markdown('<div class="smart-section-label">04 · DECISION COMPARISON</div>',unsafe_allow_html=True); ui_dataframe(safe_metric_table(results,["supplier","product_category","final_score","final_rating","user_rating","risk_level","risk_score","avg_delay","avg_unit_price","trend_status"]),width="stretch")
+
+
+def page_risk_analysis(db):
+    """Supplier Risk Analysis System based on calculated supplier metrics."""
+    page_header("Risk Analysis")
+
+    metrics_df = load_supplier_metrics(db)
+    if metrics_df.empty:
+        st.warning("No supplier metrics are available yet.")
+        st.info("Ask an admin to upload and clean supplier data first.")
+        return
+
+    df = metrics_df.copy()
+    numeric_columns = [
+        "risk_score", "supplier_rank_score", "supplier_kpi_score",
+        "final_rating", "user_rating", "avg_delay", "reliability",
+        "disruption_frequency", "supply_risk_rate", "avg_severity",
+        "bad_feedback_count", "total_orders", "avg_unit_price",
+    ]
+    for column in numeric_columns:
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors="coerce").fillna(0)
+
+    st.markdown(
+        """
+        <div class="page-hero">
+            <div class="page-hero-top">
+                <div class="ui-kicker">RISK INTELLIGENCE</div>
+                <h1>Understand supplier risk<br>before you buy.</h1>
+                <p>Review predicted risk, operational drivers, feedback signals and supplier exposure in one decision-ready view.</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    categories = sorted(df["product_category"].dropna().astype(str).unique()) if "product_category" in df.columns else []
+    filter_left, filter_mid, filter_right = st.columns([1.2, 1.2, 1])
+    with filter_left:
+        selected_category = st.selectbox(
+            "Product category",
+            ["All categories"] + categories,
+            key="risk_category_filter",
+        )
+    with filter_mid:
+        selected_level = st.multiselect(
+            "Risk level",
+            ["Low", "Medium", "High"],
+            default=["Low", "Medium", "High"],
+            key="risk_level_filter",
+        )
+    with filter_right:
+        min_score = st.slider(
+            "Minimum risk score",
+            0, 100, 0,
+            key="risk_min_score",
+        )
+
+    filtered = df.copy()
+    if selected_category != "All categories":
+        filtered = filtered[filtered["product_category"].astype(str) == selected_category]
+    if selected_level:
+        filtered = filtered[filtered["risk_level"].astype(str).isin(selected_level)]
+    else:
+        filtered = filtered.iloc[0:0]
+    filtered = filtered[filtered["risk_score"] >= min_score].copy()
+
+    total_suppliers = int(filtered["supplier"].nunique()) if "supplier" in filtered.columns else len(filtered)
+    high_count = int((filtered["risk_level"] == "High").sum()) if "risk_level" in filtered.columns else 0
+    medium_count = int((filtered["risk_level"] == "Medium").sum()) if "risk_level" in filtered.columns else 0
+    avg_risk = float(filtered["risk_score"].mean()) if not filtered.empty else 0
+    avg_rating = float(filtered["final_rating"].mean()) if not filtered.empty and "final_rating" in filtered.columns else 0
+
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric("Suppliers analyzed", total_suppliers)
+    k2.metric("High risk", high_count)
+    k3.metric("Medium risk", medium_count)
+    k4.metric("Average risk", f"{avg_risk:.0f}/100")
+    k5.metric("Average rating", f"{avg_rating:.1f}/5")
+
+    if filtered.empty:
+        st.info("No suppliers match the current risk filters.")
+        return
+
+    left, right = st.columns(2)
+
+    with left:
+        st.subheader("Risk Distribution")
+        level_counts = (
+            filtered["risk_level"]
+            .value_counts()
+            .reindex(["Low", "Medium", "High"], fill_value=0)
+            .rename_axis("Risk level")
+            .reset_index(name="Suppliers")
+        )
+        fig = px.bar(
+            level_counts,
+            x="Risk level",
+            y="Suppliers",
+            text="Suppliers",
+            title="Supplier risk levels",
+        )
+        fig.update_layout(margin=dict(l=10, r=10, t=55, b=10), showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+
+    with right:
+        st.subheader("Risk Score by Supplier")
+        plot_df = filtered.sort_values("risk_score", ascending=False).head(15)
+        fig = px.bar(
+            plot_df,
+            x="risk_score",
+            y="supplier",
+            color="risk_level",
+            orientation="h",
+            hover_data=[
+                c for c in ["product_category", "avg_delay", "reliability", "final_rating"]
+                if c in plot_df.columns
+            ],
+            title="Highest-risk supplier profiles",
+        )
+        fig.update_layout(
+            margin=dict(l=10, r=10, t=55, b=10),
+            yaxis={"categoryorder": "total ascending"},
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("Risk Driver Analysis")
+
+    supplier_options = filtered.apply(
+        lambda row: f"{row['supplier']} · {row['product_category']}",
+        axis=1,
+    ).tolist()
+    selected_supplier = st.selectbox(
+        "Supplier to analyze",
+        supplier_options,
+        key="risk_supplier_select",
+    )
+
+    selected_mask = filtered.apply(
+        lambda row: f"{row['supplier']} · {row['product_category']}",
+        axis=1,
+    ) == selected_supplier
+    row = filtered[selected_mask].iloc[0]
+
+    risk_score_value = float(row.get("risk_score", 0))
+    risk_level_value = str(row.get("risk_level", "Unknown"))
+
+    if risk_level_value == "High":
+        st.error(f"{selected_supplier}: HIGH RISK — {risk_score_value:.0f}/100")
+    elif risk_level_value == "Medium":
+        st.warning(f"{selected_supplier}: MEDIUM RISK — {risk_score_value:.0f}/100")
+    else:
+        st.success(f"{selected_supplier}: LOW RISK — {risk_score_value:.0f}/100")
+
+    reliability = float(row.get("reliability", 0))
+    avg_delay = float(row.get("avg_delay", 0))
+    disruption_frequency = float(row.get("disruption_frequency", 0))
+    supply_risk_rate = float(row.get("supply_risk_rate", 0))
+    avg_severity = float(row.get("avg_severity", 0))
+    user_rating = float(row.get("user_rating", 0))
+    bad_feedback = int(row.get("bad_feedback_count", 0))
+
+    driver_rows = [
+        {
+            "Risk driver": "Reliability",
+            "Value": f"{reliability * 100:.1f}%",
+            "Interpretation": "Lower reliability increases predicted risk.",
+        },
+        {
+            "Risk driver": "Average delay",
+            "Value": f"{avg_delay:.1f} days",
+            "Interpretation": "Longer delivery delays increase operational exposure.",
+        },
+        {
+            "Risk driver": "Disruption frequency",
+            "Value": f"{disruption_frequency * 100:.1f}%",
+            "Interpretation": "Frequent disruptions increase supply risk.",
+        },
+        {
+            "Risk driver": "Supply-risk flag rate",
+            "Value": f"{supply_risk_rate * 100:.1f}%",
+            "Interpretation": "Historical supply-risk flags increase the risk score.",
+        },
+        {
+            "Risk driver": "Average severity",
+            "Value": f"{avg_severity:.2f}",
+            "Interpretation": "More severe incidents increase exposure.",
+        },
+        {
+            "Risk driver": "User rating",
+            "Value": f"{user_rating:.1f}/5",
+            "Interpretation": "Lower feedback ratings increase predicted risk.",
+        },
+        {
+            "Risk driver": "Bad feedback",
+            "Value": str(bad_feedback),
+            "Interpretation": "Ratings of 2 or below are treated as negative feedback.",
+        },
+    ]
+    ui_dataframe(pd.DataFrame(driver_rows), width="stretch")
+
+    st.subheader("Risk Monitoring Table")
+    risk_columns = [
+        "supplier", "product_category", "risk_score", "risk_level",
+        "supplier_rank_score", "final_rating", "avg_delay", "reliability",
+        "disruption_frequency", "supply_risk_rate", "trend_status",
+    ]
+    ui_dataframe(
+        safe_metric_table(
+            filtered.sort_values("risk_score", ascending=False),
+            risk_columns,
+        ),
+        width="stretch",
+    )
+
+    st.subheader("Recommended Risk Actions")
+    actions = []
+    if avg_delay > 5:
+        actions.append("Review delivery commitments and consider a backup supplier.")
+    elif avg_delay > 2:
+        actions.append("Monitor delivery performance closely against the agreed deadline.")
+    if reliability < 0.8:
+        actions.append("Request a supplier reliability improvement plan.")
+    if disruption_frequency > 0.10:
+        actions.append("Review recent disruption causes and contingency capacity.")
+    if supply_risk_rate > 0.10:
+        actions.append("Increase monitoring for supply interruptions.")
+    if user_rating < 3:
+        actions.append("Review recent user feedback before increasing purchase volume.")
+    if bad_feedback > 0:
+        actions.append("Investigate negative feedback events and corrective actions.")
+    if not actions:
+        actions.append("No major risk-driver warning was detected. Continue routine monitoring.")
+
+    for action in actions:
+        st.markdown(f"- {action}")
 
 
 def page_rate_supplier(db):
@@ -2967,11 +3470,12 @@ def render_app():
             page = st.session_state["supplier_page"]
         else:
             st.markdown('<div class="sidebar-role-badge">👤 Procurement Workspace<small>Discover, rate and manage suppliers</small></div>', unsafe_allow_html=True)
-            user_pages = ["Home", "Find Supplier", "Rate Supplier", "My History"]
-            user_icons = {"Home": "⌂", "Find Supplier": "⌕", "Rate Supplier": "★", "My History": "◷"}
+            user_pages = ["Home", "Supplier Recommendation", "Risk Analysis", "Rate Supplier", "My History"]
+            user_icons = {"Home": "⌂", "Supplier Recommendation": "✦", "Risk Analysis": "◉", "Rate Supplier": "★", "My History": "◷"}
             user_desc = {
                 "Home": "Your supplier intelligence hub",
-                "Find Supplier": "Build a smart supplier shortlist",
+                "Supplier Recommendation": "AI-ranked supplier shortlist",
+                "Risk Analysis": "Analyze supplier risk and drivers",
                 "Rate Supplier": "Share performance feedback",
                 "My History": "Saved suppliers & activity",
             }
@@ -3010,8 +3514,10 @@ def render_app():
         page_supplier_future_prediction(db)
     elif page == "Home":
         page_user_home(db)
-    elif page == "Find Supplier":
+    elif page == "Supplier Recommendation":
         page_find_supplier(db)
+    elif page == "Risk Analysis":
+        page_risk_analysis(db)
     elif page == "Rate Supplier":
         page_rate_supplier(db)
     elif page == "My History":
