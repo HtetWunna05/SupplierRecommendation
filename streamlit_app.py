@@ -11,6 +11,9 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+px.defaults.template = "plotly_white"
+px.defaults.width = None
+
 from database import (
     COLLECTIONS,
     append_dataframe_unique,
@@ -24,373 +27,121 @@ from database import (
 
 
 st.set_page_config(
-    page_title="Supplier Recommendation and Risk Analysis",
-    page_icon="SR",
+    page_title="SupplyLogix • AI Supplier Intelligence",
+    page_icon="🚚",
     layout="wide",
 )
+
 
 
 def inject_custom_css():
     st.markdown(
         """
         <style>
-        :root {
-            --app-blue: #24489d;
-            --app-blue-light: #5f83f2;
-            --app-bg: #f6f8fc;
-            --app-card: #ffffff;
-            --app-border: #d9e0ec;
-            --app-text: #0f172a;
-            --app-muted: #64748b;
-            --app-green: #16a34a;
-            --app-red: #dc2626;
-            --app-amber: #f59e0b;
-            --app-purple: #8b5cf6;
-            --app-cyan: #06b6d4;
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+        :root{
+          --canvas:#f7f6f2; --paper:#ffffff; --ink:#111111; --muted:#77746f;
+          --line:#dedbd3; --nav:#f4f2ed; --accent:#273d70; --accent2:#466a72;
+          --lav:#d7c6ff; --green:#809b87; --shadow:0 18px 45px rgba(31,31,28,.08);
         }
+        html,body,[class*="css"]{font-family:'DM Sans',sans-serif;color:var(--ink)}
+        .stApp{background:var(--canvas)}
+        .stApp>header{background:rgba(247,246,242,.96);border-bottom:1px solid #ebe8e1}
+        .block-container{max-width:none;width:100%;padding:2.2rem 3.2rem 5rem}
+        section.main>div{max-width:none}
 
-        .stApp {
-            background: var(--app-bg);
-            color: var(--app-text);
-        }
+        /* Sidebar: editorial / premium SaaS navigation */
+        section[data-testid="stSidebar"]{background:#f1f0eb;border-right:1px solid #dcd9d1}
+        section[data-testid="stSidebar"][aria-expanded="true"]{min-width:355px!important;width:355px!important}
+        section[data-testid="stSidebar"][aria-expanded="false"]{min-width:0!important;width:0!important;margin-left:0!important;border-right:0!important}
+        section[data-testid="stSidebar"][aria-expanded="false"]>div:first-child{display:none!important}
+        section[data-testid="stSidebar"]>div:first-child{padding:1.65rem 1.3rem 1.5rem}
+        section[data-testid="stSidebar"] *{color:var(--ink)!important}
+        .sidebar-brand{display:flex;align-items:center;gap:1rem;padding:.45rem .45rem 1.2rem;border-bottom:1px solid #d9d6ce;margin-bottom:1.35rem}
+        .brand-icon{width:58px;height:58px;display:grid;place-items:center;border-radius:19px;background:linear-gradient(145deg,#f5eee2,#dce8df);border:1px solid #d3cec2;box-shadow:inset 0 1px 0 #fff,0 9px 22px rgba(45,43,36,.08);font-size:0}
+        .brand-icon:after{content:'◆';font-size:20px;color:#141414;transform:scale(.82)}
+        .brand-name{font-family:'Manrope',sans-serif;font-size:1.38rem;font-weight:800;letter-spacing:-.05em}
+        .brand-name span{color:#718875!important}
+        .brand-subtitle{font-size:.68rem!important;font-weight:800;letter-spacing:.13em;text-transform:uppercase;margin-top:.32rem;color:#171717!important}
+        .sidebar-role-badge{background:#fff;border:1px solid #ddd9d0;border-radius:21px;padding:1rem 1rem;margin:.3rem 0 1rem;box-shadow:0 9px 25px rgba(36,35,31,.045)}
+        .sidebar-role-badge small{display:block!important;color:#77746f!important;margin-top:.25rem;font-size:.75rem}
+        section[data-testid="stSidebar"] .stButton>button{width:auto!important;border-radius:13px!important;background:#fff!important;color:#151515!important;border:1px solid #d6d1c8!important;padding:.55rem 1rem!important;box-shadow:none!important}
+        section[data-testid="stSidebar"] .stButton>button:hover{background:#f8f6f1!important;border-color:#b9b4aa!important}
+        .smart-nav{margin:.35rem 0 0}
+        .smart-nav-section{display:flex;align-items:center;justify-content:space-between;padding:.35rem .75rem .55rem}
+        .smart-nav-section span:first-child{font-size:.66rem;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:#817d75!important}
+        .smart-nav-section span:last-child{font-size:.58rem;color:#9a958c!important}
+        .smart-nav-item{display:flex;align-items:center;gap:.75rem;padding:.72rem .78rem;border-radius:15px;margin:.16rem 0;color:#26241f!important;background:transparent;border:1px solid transparent;transition:.18s ease}
+        .smart-nav-item:hover{background:#e7e5df;border-color:#ddd9d0;transform:translateX(2px)}
+        .smart-nav-item .nav-icon{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:#ebe9e3;font-size:15px;flex:0 0 32px}
+        .smart-nav-item .nav-copy{min-width:0;flex:1}
+        .smart-nav-item .nav-title{font-size:.91rem;font-weight:650;line-height:1.1}
+        .smart-nav-item .nav-desc{font-size:.68rem;color:#858179!important;margin-top:.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .smart-nav-item .nav-arrow{font-size:.9rem;color:#a29d94!important;opacity:0;transition:.18s}
+        .smart-nav-item:hover .nav-arrow{opacity:1;transform:translateX(2px)}
+        .smart-nav-active{background:#111!important;color:#fff!important;border-color:#111!important;box-shadow:0 12px 25px rgba(0,0,0,.12)}
+        .smart-nav-active .nav-icon{background:rgba(255,255,255,.12)!important;color:#fff!important}
+        .smart-nav-active .nav-title{color:#fff!important}
+        .smart-nav-active .nav-desc{color:#bdbdbd!important}
+        .smart-nav-active .nav-arrow{opacity:1;color:#fff!important}
+        section[data-testid="stSidebar"] .smart-nav-button .stButton>button{width:100%!important;text-align:left!important;border:0!important;border-radius:15px!important;background:transparent!important;color:#26241f!important;padding:.72rem .78rem!important;box-shadow:none!important;font-size:.91rem!important;font-weight:650!important;min-height:52px!important;transition:.18s ease!important}
+        section[data-testid="stSidebar"] .smart-nav-button .stButton>button:hover{background:#e7e5df!important;border-color:#ddd9d0!important;transform:translateX(2px)!important}
+        .sidebar-footer{position:relative;margin-top:2.5rem;padding:1rem .7rem;border-top:1px solid #d9d6ce;color:#25231f!important}
+        .sidebar-footer b{font-size:.7rem;letter-spacing:.12em}.sidebar-footer span{display:block;font-size:.72rem;color:#6e6b65!important;margin-top:.3rem}
 
-        section[data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #24489d 0%, #1d3d89 100%);
-            border-right: 0;
-        }
+        /* Main page / hero */
+        .page-hero{position:relative;overflow:hidden;border-radius:32px;padding:2.55rem 2.75rem;margin:.8rem 0 1.55rem;background:linear-gradient(115deg,#283b70 0%,#304775 56%,#3d666a 100%);box-shadow:0 22px 50px rgba(41,58,96,.16);min-height:270px;display:flex;align-items:center}
+        .page-hero:before{content:'';position:absolute;width:420px;height:420px;right:-55px;top:-130px;border-radius:50%;background:radial-gradient(circle,rgba(188,179,247,.42),rgba(132,170,183,.17) 38%,transparent 68%)}
+        .page-hero:after{content:'✦';position:absolute;right:130px;top:73px;width:124px;height:124px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:38px;background:linear-gradient(145deg,#a58ad3,#6f9299);box-shadow:0 0 0 1px rgba(255,255,255,.18),0 0 0 52px rgba(255,255,255,.035),0 0 0 1px rgba(255,255,255,.12) inset}
+        .page-hero-top{position:relative;z-index:2;display:block;max-width:720px}
+        .page-hero-icon{display:none}
+        .ui-kicker{display:block;background:none;border:0;padding:0;color:#ddd5ff!important;font-size:.72rem;font-weight:800;letter-spacing:.16em;margin-bottom:1.05rem}
+        .page-hero h1{font-family:'Manrope',sans-serif;color:#dfd2ff!important;font-size:3rem!important;line-height:1.03!important;letter-spacing:-.065em!important;margin:0!important;font-weight:800!important;max-width:680px}
+        .page-hero p{color:#e7e9f2!important;margin:.9rem 0 0!important;font-size:1rem;line-height:1.65;max-width:690px}
+        .ui-status{display:none}
+        h1,h2,h3{font-family:'Manrope',sans-serif;color:#111!important;letter-spacing:-.045em}
+        h1{font-weight:800!important}h2,h3{font-weight:750!important}
+        h2::before,h3::before{display:none}
+        .section-kicker{font-size:.7rem;font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:#7560a0!important;margin-top:2rem}
 
-        section[data-testid="stSidebar"] * {
-            color: #ffffff !important;
-        }
+        /* Metrics / cards */
+        div[data-testid="stMetric"]{background:#fff;border:1px solid #dedbd4;border-top:4px solid #111;border-radius:20px;padding:1.1rem 1.2rem;box-shadow:0 12px 30px rgba(30,29,26,.055);min-height:105px}
+        div[data-testid="stMetric"]:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+        div[data-testid="stMetricLabel"] p{color:#2d2b27!important;font-size:.9rem!important;font-weight:500!important;text-transform:none;letter-spacing:0}
+        div[data-testid="stMetricValue"]{color:#111!important;font-family:'Manrope';font-size:1.7rem;font-weight:800}
+        div[data-testid="stMetricDelta"]{color:#708a76!important}
+        .metric-card{background:#fff;border:1px solid #dedbd4;border-top:4px solid #111;border-radius:20px;padding:1.1rem 1.2rem;box-shadow:0 12px 30px rgba(30,29,26,.055)}
+        .metric-card .label{font-size:.9rem;color:#2d2b27}.metric-card .value{font-family:'Manrope';font-size:1.75rem;font-weight:800;margin-top:.3rem}.metric-card .subvalue{font-size:.76rem;color:#77746f;margin-top:.28rem;font-weight:650}
 
-        section[data-testid="stSidebar"] h1 {
-            font-size: 1.65rem !important;
-            font-weight: 800 !important;
-            margin-bottom: 1.2rem !important;
-        }
-
-        .sidebar-brand {
-            display: flex;
-            align-items: center;
-            gap: 0.65rem;
-            padding: 0.35rem 0.15rem 1.2rem 0.15rem;
-            margin-bottom: 0.4rem;
-        }
-
-        .brand-icon {
-            width: 42px;
-            height: 42px;
-            display: grid;
-            place-items: center;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.16);
-            font-size: 1.45rem;
-        }
-
-        .brand-name {
-            font-size: 1.45rem;
-            font-weight: 850;
-            line-height: 1.05;
-        }
-
-        .brand-name span {
-            color: #8ee7ff !important;
-        }
-
-        .brand-subtitle {
-            font-size: 0.76rem;
-            opacity: 0.82;
-            margin-top: 0.15rem;
-        }
-
-        .sidebar-role-badge {
-            background: rgba(255, 255, 255, 0.14);
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            border-radius: 8px;
-            padding: 0.65rem 0.75rem;
-            margin: 0.75rem 0 0.75rem 0;
-            font-weight: 750;
-        }
-
-        .sidebar-role-badge small {
-            display: block;
-            opacity: 0.78;
-            font-weight: 600;
-            margin-top: 0.1rem;
-        }
-
-        section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
-            opacity: 0.82;
-        }
-
-        section[data-testid="stSidebar"] div[role="radiogroup"] label {
-            border-radius: 8px;
-            padding: 0.7rem 0.8rem;
-            margin: 0.2rem 0;
-            transition: background 0.2s ease, transform 0.2s ease;
-        }
-
-        section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
-            display: none !important;
-        }
-
-        section[data-testid="stSidebar"] div[role="radiogroup"] label p {
-            font-size: 1rem !important;
-            font-weight: 650 !important;
-        }
-
-        section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-            background: rgba(255, 255, 255, 0.14);
-            transform: translateX(2px);
-        }
-
-        section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-            background: #5f83f2;
-            box-shadow: 0 10px 20px rgba(14, 34, 92, 0.25);
-            font-weight: 800;
-        }
-
-        section[data-testid="stSidebar"] .stButton > button {
-            background: rgba(255, 255, 255, 0.12) !important;
-            border: 1px solid rgba(255, 255, 255, 0.22) !important;
-            color: #ffffff !important;
-            width: 100%;
-        }
-
-        .block-container {
-            padding-top: 2rem;
-            padding-left: 2.2rem;
-            padding-right: 2.2rem;
-            max-width: 1320px;
-        }
-
-        .page-hero {
-            background: linear-gradient(135deg, #ffffff 0%, #edf4ff 62%, #e9fbff 100%);
-            border: 1px solid var(--app-border);
-            border-left: 6px solid var(--app-blue-light);
-            border-radius: 8px;
-            padding: 1.05rem 1.2rem;
-            margin: 0 0 1.25rem 0;
-            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
-        }
-
-        .page-hero-top {
-            display: flex;
-            align-items: center;
-            gap: 0.85rem;
-        }
-
-        .page-hero-icon {
-            width: 46px;
-            height: 46px;
-            display: grid;
-            place-items: center;
-            border-radius: 8px;
-            color: #ffffff;
-            background: linear-gradient(135deg, var(--app-blue), var(--app-blue-light));
-            font-size: 1.35rem;
-            box-shadow: 0 8px 18px rgba(36, 72, 157, 0.24);
-        }
-
-        .page-hero h1 {
-            margin: 0 !important;
-            padding: 0 !important;
-            font-size: 2rem !important;
-            line-height: 1.1 !important;
-        }
-
-        .page-hero p {
-            margin: 0.25rem 0 0 0;
-            color: var(--app-muted);
-            font-size: 0.95rem;
-        }
-
-        .inline-page-title {
-            background: linear-gradient(135deg, #ffffff 0%, #edf4ff 100%);
-            border: 1px solid var(--app-border);
-            border-left: 6px solid var(--app-blue-light);
-            border-radius: 8px;
-            padding: 0.95rem 1.1rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
-        }
-
-        .inline-page-title h1 {
-            margin: 0 !important;
-            padding: 0 !important;
-            font-size: 2rem !important;
-        }
-
-        .inline-page-title p {
-            margin: 0.2rem 0 0 0;
-            color: var(--app-muted);
-        }
-
-        .search-page-title {
-            margin-bottom: 0.35rem;
-        }
-
-        .search-page-title h1 {
-            margin: 0 !important;
-            padding: 0 !important;
-            font-size: 2rem !important;
-            line-height: 1.12 !important;
-        }
-
-        .search-page-title p {
-            margin: 0.25rem 0 0 0;
-            color: var(--app-muted);
-        }
-
-        h1, h2, h3 {
-            color: var(--app-text);
-            letter-spacing: 0;
-        }
-
-        h1 {
-            font-size: 2.1rem !important;
-            font-weight: 800 !important;
-        }
-
-        h2, h3 {
-            font-weight: 750 !important;
-        }
-
-        h2::before, h3::before {
-            content: "";
-            display: inline-block;
-            width: 0.45rem;
-            height: 0.9rem;
-            background: var(--app-blue-light);
-            border-radius: 99px;
-            margin-right: 0.45rem;
-            vertical-align: -0.08rem;
-        }
-
-        div[data-testid="stMetric"] {
-            background: var(--app-card);
-            border: 1px solid var(--app-border);
-            border-top: 4px solid var(--app-blue-light);
-            border-radius: 8px;
-            padding: 1rem 1.1rem;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-        }
-
-        div[data-testid="column"]:nth-of-type(2n) div[data-testid="stMetric"] {
-            border-top-color: var(--app-green);
-        }
-
-        div[data-testid="column"]:nth-of-type(3n) div[data-testid="stMetric"] {
-            border-top-color: var(--app-amber);
-        }
-
-        div[data-testid="column"]:nth-of-type(4n) div[data-testid="stMetric"] {
-            border-top-color: var(--app-purple);
-        }
-
-        div[data-testid="stMetricLabel"] p {
-            color: var(--app-muted) !important;
-            font-size: 0.9rem;
-            font-weight: 650;
-        }
-
-        div[data-testid="stMetricValue"] {
-            color: var(--app-text);
-            font-weight: 800;
-        }
-
-        div[data-testid="stMetricDelta"] {
-            color: var(--app-green);
-        }
-
-        .stDataFrame,
-        div[data-testid="stDataFrame"] {
-            border: 1px solid var(--app-border);
-            border-radius: 8px;
-            overflow: hidden;
-            background: var(--app-card);
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-        }
-
-        div[data-testid="stDataFrame"] div[role="columnheader"] {
-            background: #eaf0ff !important;
-            color: var(--app-text) !important;
-            font-weight: 750 !important;
-        }
-
-        div[data-testid="stPlotlyChart"] {
-            background: var(--app-card);
-            border: 1px solid var(--app-border);
-            border-radius: 8px;
-            padding: 0.75rem;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-        }
-
-        div[data-testid="stForm"],
-        div[data-testid="stExpander"] {
-            background: var(--app-card);
-            border: 1px solid var(--app-border);
-            border-radius: 8px;
-            padding: 1rem;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-        }
-
-        .stTabs [data-baseweb="tab-list"] {
-            background: #eaf0ff;
-            border-radius: 8px;
-            padding: 0.3rem;
-        }
-
-        .stTabs [data-baseweb="tab"] {
-            border-radius: 7px;
-            font-weight: 700;
-        }
-
-        .stTabs [aria-selected="true"] {
-            background: #ffffff;
-            color: var(--app-blue) !important;
-        }
-
-        .stButton > button,
-        .stDownloadButton > button,
-        button[kind="secondary"] {
-            border-radius: 8px !important;
-            border: 1px solid #cbd5e1 !important;
-            background: #ffffff !important;
-            color: #0f172a !important;
-            font-weight: 650 !important;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-        }
-
-        .stButton > button:hover,
-        .stDownloadButton > button:hover {
-            border-color: var(--app-blue-light) !important;
-            color: var(--app-blue) !important;
-        }
-
-        .stButton > button[kind="primary"] {
-            background: var(--app-red) !important;
-            border-color: var(--app-red) !important;
-            color: #ffffff !important;
-        }
-
-        div[data-baseweb="input"],
-        div[data-baseweb="select"] > div,
-        div[data-baseweb="textarea"] {
-            border-radius: 8px !important;
-            background: #ffffff !important;
-        }
-
-        .stAlert {
-            border-radius: 8px;
-        }
-
-        hr {
-            border-color: var(--app-border);
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
+        /* Tables / charts / controls */
+        div[data-testid="stDataFrame"]{background:#fff;border:1px solid #dedbd4;border-radius:20px;overflow:hidden;box-shadow:0 12px 30px rgba(30,29,26,.05)}
+        div[data-testid="stDataFrame"] div[role="columnheader"]{background:#f2f0eb!important;color:#24231f!important;font-weight:700!important}
+        div[data-testid="stPlotlyChart"]{background:#fff;border:1px solid #dedbd4;border-radius:20px;padding:.6rem;box-shadow:0 12px 30px rgba(30,29,26,.05)}
+        div[data-testid="stForm"],div[data-testid="stExpander"]{background:#fff;border:1px solid #dedbd4;border-radius:22px;padding:1.05rem;box-shadow:0 12px 30px rgba(30,29,26,.05)}
+        .stTabs [data-baseweb="tab-list"]{background:#eeece6;border:1px solid #dedbd4;border-radius:15px;padding:.25rem;gap:.2rem}
+        .stTabs [data-baseweb="tab"]{border-radius:11px;color:#6b6861!important;font-weight:700}
+        .stTabs [aria-selected="true"]{background:#111;color:#fff!important;box-shadow:0 8px 18px rgba(0,0,0,.12)}
+        .stButton>button,.stDownloadButton>button,button[kind="secondary"]{border-radius:13px!important;background:#fff!important;color:#151515!important;border:1px solid #d3cec4!important;font-weight:700!important;transition:.18s}
+        .stButton>button:hover,.stDownloadButton>button:hover{transform:translateY(-1px);border-color:#9c978e!important;box-shadow:0 8px 18px rgba(0,0,0,.06)}
+        .stButton>button[kind="primary"]{background:#111!important;color:#fff!important;border-color:#111!important;box-shadow:0 9px 20px rgba(0,0,0,.14)}
+        div[data-baseweb="input"],div[data-baseweb="select"]>div,div[data-baseweb="textarea"]{background:#fff!important;border-radius:12px!important;border:1px solid #d7d3ca!important;color:#171717!important}
+        div[data-baseweb="input"] input,div[data-baseweb="textarea"] textarea{color:#111!important}
+        .stSelectbox label,.stTextInput label,.stNumberInput label,.stSlider label,.stMultiSelect label{color:#34312c!important;font-weight:600!important}
+        .stAlert{border-radius:15px}
+        hr{border-color:#dedbd4}
+        .stCaption,small{color:#77746f!important}
+        .discover-title{font-family:'Manrope';font-weight:800;font-size:1rem;letter-spacing:-.02em;margin-top:.25rem}
+        .discover-kicker{color:#7661a0!important;font-size:.7rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-top:2.2rem}
+        .info-card{background:#fff;border:1px solid #dedbd4;border-radius:20px;padding:1.25rem;box-shadow:0 12px 30px rgba(30,29,26,.05)}
+        @media(max-width:900px){.block-container{padding:1.2rem .8rem 3rem}.page-hero{padding:1.7rem;min-height:240px}.page-hero h1{font-size:2rem!important}.page-hero:after{right:-20px;opacity:.65}.page-hero p{font-size:.9rem}}
+                .smart-search-banner{display:flex;justify-content:space-between;align-items:center;gap:2rem;padding:1.55rem 1.7rem;margin:.4rem 0 1.25rem;border:1px solid #d9d6ce;border-radius:26px;background:linear-gradient(110deg,#ffffff 0%,#f4f1fa 56%,#e5eff0 100%);box-shadow:0 18px 45px rgba(31,31,28,.07)}
+        .smart-search-banner h2{font-family:'Manrope',sans-serif;font-size:2rem;letter-spacing:-.045em;margin:.25rem 0 .35rem}.smart-search-banner p{color:#68655f;margin:0;max-width:720px}
+        .smart-ai-orb{width:94px;height:94px;min-width:94px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 35% 30%,#c9b6ed,#78959a);box-shadow:0 0 0 14px rgba(126,145,160,.08),0 15px 35px rgba(71,77,95,.16);color:white}.smart-ai-orb span{font-size:1.5rem}.smart-ai-orb small{font-size:.48rem;font-weight:800;letter-spacing:.12em;text-align:center}
+        .smart-section-label{font-size:.68rem;font-weight:800;letter-spacing:.17em;color:#806e9f;margin:1.45rem 0 .7rem;text-transform:uppercase}.form-mini-title{font-size:.68rem;letter-spacing:.14em;font-weight:800;color:#77746f;margin:.2rem 0 .5rem}
+        .smart-preview{display:flex;align-items:center;gap:1rem;padding:1rem 1.1rem;margin:1rem 0;border-radius:18px;border:1px solid #d9d6ce;background:#fbfaf7}.smart-preview.warning{background:#fffaf0;border-color:#ead9b1}.smart-preview.good{background:#f4faf5;border-color:#cfe0d2}.preview-score{display:flex;align-items:baseline;gap:.4rem;min-width:90px}.preview-score strong{font-family:'Manrope',sans-serif;font-size:2rem}.preview-score span{font-size:.68rem;color:#77746f;line-height:1.05}.smart-preview p{margin:.18rem 0 0;color:#6d6962;font-size:.82rem}.preview-pill{margin-left:auto;border-radius:999px;background:#111;color:#fff;padding:.45rem .7rem;font-size:.68rem;font-weight:700}
+        .empty-smart-state{text-align:center;padding:3rem 1rem;border:1px dashed #d2cec4;border-radius:24px;background:rgba(255,255,255,.5);margin-top:1rem}.empty-smart-state span{font-size:2rem}.empty-smart-state h3{font-family:'Manrope',sans-serif;margin:.5rem 0 .2rem}.empty-smart-state p{color:#77746f;margin:0}.supplier-result-head{display:flex;align-items:center;gap:.8rem}.supplier-result-head h3{margin:0;font-family:'Manrope',sans-serif}.supplier-result-head p{margin:.15rem 0 0;color:#77746f;font-size:.8rem}.rank-badge{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#111;color:#fff;font-weight:800}.match-score{text-align:right}.match-score span{display:block;font-size:.55rem;letter-spacing:.12em;color:#8172a0;font-weight:800}.match-score strong{font-family:'Manrope',sans-serif;font-size:2rem}.match-score small{color:#77746f}.reason-card{margin:.7rem 0 0;padding:.75rem .9rem;border-radius:14px;background:#f7f5f0;border:1px solid #e3dfd6;display:flex;gap:.5rem;font-size:.82rem}.reason-card b{white-space:nowrap}.reason-card span{color:#68655f}
+</style>
+        """, unsafe_allow_html=True,
     )
 
 
@@ -421,10 +172,12 @@ def page_header(page_key):
         <div class="page-hero">
             <div class="page-hero-top">
                 <div class="page-hero-icon">{icon}</div>
-                <div>
+                <div style="flex:1">
+                    <div class="ui-kicker">SUPPLYLOGIX • AI WORKSPACE</div>
                     <h1>{title}</h1>
                     <p>{subtitle}</p>
                 </div>
+                <div class="ui-status"><span class="ui-status-dot"></span>Workspace ready</div>
             </div>
         </div>
         """,
@@ -595,10 +348,10 @@ PRODUCT_TRENDS_PATH = Path(__file__).parent / "data" / "product_trends.csv"
 
 PRIORITY_WEIGHTS = {
     "Balanced": {"kpi": 0.30, "rating": 0.20, "risk": 0.25, "match": 0.25},
-    "Low Cost": {"kpi": 0.20, "rating": 0.15, "risk": 0.20, "match": 0.45},
-    "High Quality": {"kpi": 0.25, "rating": 0.35, "risk": 0.20, "match": 0.20},
-    "Fast Delivery": {"kpi": 0.25, "rating": 0.15, "risk": 0.20, "match": 0.40},
-    "Low Risk": {"kpi": 0.25, "rating": 0.15, "risk": 0.45, "match": 0.15},
+    "Low Cost": {"kpi": 0.15, "rating": 0.10, "risk": 0.15, "match": 0.60},
+    "High Quality": {"kpi": 0.20, "rating": 0.40, "risk": 0.15, "match": 0.25},
+    "Fast Delivery": {"kpi": 0.15, "rating": 0.10, "risk": 0.15, "match": 0.60},
+    "Low Risk": {"kpi": 0.15, "rating": 0.10, "risk": 0.60, "match": 0.15},
 }
 
 
@@ -1163,6 +916,41 @@ def explain_supplier(row, budget=None, deadline=None):
     return "Recommended because it has " + ", ".join(reasons or ["acceptable overall performance"]) + "."
 
 
+def explain_best_requirement_match(row, brief, result_count):
+    budget = float(brief.get("budget", 0) or 0)
+    quantity = int(brief.get("quantity", 0) or 0)
+    min_quality = float(brief.get("quality", 0) or 0)
+    deadline = float(brief.get("deadline", 0) or 0)
+    requested_count = int(brief.get("requested_supplier_count", result_count) or result_count)
+
+    supplier = row.get("supplier", "Selected supplier")
+    category = row.get("product_category", brief.get("category", "selected category"))
+    supplier_price = float(row.get("avg_unit_price", 0) or 0)
+    supplier_quantity = int(float(row.get("total_quantity", 0) or 0))
+    supplier_quality = float(row.get("quality_rating", row.get("final_rating", 0)) or 0)
+    supplier_delay = float(row.get("avg_delay", 0) or 0)
+    final_score = float(row.get("final_score", 0) or 0)
+    risk_level_value = row.get("risk_level", "N/A")
+
+    budget_status = "fits your budget" if budget <= 0 or supplier_price <= budget else "is above your budget"
+    quantity_status = "can handle your quantity" if supplier_quantity >= quantity else "has lower historical capacity than your quantity"
+    quality_status = "meets your quality requirement" if supplier_quality >= min_quality else "is below your quality requirement"
+    deadline_status = "fits your delivery deadline" if supplier_delay <= deadline else "is slower than your deadline"
+
+    return f"""
+**Why {supplier}?** Best match for **{category}** with **{final_score:.0f}/100** score and **{risk_level_value}** risk.
+
+| Requirement | Yours | Supplier |
+|---|---:|---:|
+| Budget per unit | **${budget:,.2f}** | **${supplier_price:,.2f}** |
+| Quantity | **{quantity:,}** | **{supplier_quantity:,} handled** |
+| Quality rating | **{min_quality:.1f}/5** | **{supplier_quality:.1f}/5** |
+| Delivery delay | **{deadline:.0f} days max** | **{supplier_delay:.1f} days avg** |
+
+Result: {budget_status}, {quantity_status}, {quality_status}, and {deadline_status}. Found **{result_count}/{requested_count}** supplier(s).
+"""
+
+
 RECOMMENDATION_REQUIRED_COLUMNS = {
     "supplier",
     "product_category",
@@ -1187,7 +975,25 @@ def validate_recommendation_input(metrics_df, priority):
     return True, "Recommendation input is valid."
 
 
-def filter_supplier_options(metrics_df, category, budget, min_quality, deadline):
+REQUIREMENT_MATCH_WEIGHTS = {
+    "Balanced": {"cost": 0.25, "deadline": 0.25, "quality": 0.25, "quantity": 0.25},
+    "Low Cost": {"cost": 0.55, "deadline": 0.15, "quality": 0.15, "quantity": 0.15},
+    "High Quality": {"cost": 0.15, "deadline": 0.15, "quality": 0.55, "quantity": 0.15},
+    "Fast Delivery": {"cost": 0.15, "deadline": 0.55, "quality": 0.15, "quantity": 0.15},
+    "Low Risk": {"cost": 0.15, "deadline": 0.20, "quality": 0.20, "quantity": 0.45},
+}
+
+
+PRIORITY_SORT_COLUMNS = {
+    "Balanced": "requirement_match_score",
+    "Low Cost": "cost_match",
+    "High Quality": "quality_match",
+    "Fast Delivery": "deadline_match",
+    "Low Risk": "risk_prediction_score",
+}
+
+
+def filter_supplier_options(metrics_df, category, budget, min_quality, deadline, quantity=None):
     options = metrics_df[metrics_df["product_category"].str.lower() == category.lower()].copy()
     if options.empty:
         return options
@@ -1196,20 +1002,26 @@ def filter_supplier_options(metrics_df, category, budget, min_quality, deadline)
         options[col] = pd.to_numeric(options[col], errors="coerce").fillna(0)
     if budget > 0:
         options = options[options["avg_unit_price"] <= budget]
-    return options[(options["quality_rating"] >= min_quality) & (options["avg_delay"] <= deadline)]
+    options = options[(options["quality_rating"] >= min_quality) & (options["avg_delay"] <= deadline)]
+    if quantity and not options.empty:
+        capable_options = options[options["total_quantity"] >= quantity]
+        if not capable_options.empty:
+            return capable_options
+    return options
 
 
-def calculate_requirement_match(options, quantity, budget, deadline):
+def calculate_requirement_match(options, quantity, budget, deadline, priority):
     scored = options.copy()
     scored["cost_match"] = np.where(budget > 0, ((budget - scored["avg_unit_price"]) / budget * 100).clip(0, 100), 70)
     scored["deadline_match"] = ((deadline - scored["avg_delay"]) / max(deadline, 1) * 100).clip(0, 100)
     scored["quality_match"] = (scored["quality_rating"] / 5 * 100).clip(0, 100)
     scored["quantity_match"] = np.where(scored["total_quantity"] >= quantity, 100, scored["total_quantity"] / max(quantity, 1) * 100)
+    match_weights = REQUIREMENT_MATCH_WEIGHTS.get(priority, REQUIREMENT_MATCH_WEIGHTS["Balanced"])
     scored["requirement_match_score"] = (
-        scored["cost_match"] * 0.30
-        + scored["deadline_match"] * 0.30
-        + scored["quality_match"] * 0.25
-        + scored["quantity_match"] * 0.15
+        scored["cost_match"] * match_weights["cost"]
+        + scored["deadline_match"] * match_weights["deadline"]
+        + scored["quality_match"] * match_weights["quality"]
+        + scored["quantity_match"] * match_weights["quantity"]
     ).round(2)
     return scored
 
@@ -1229,8 +1041,14 @@ def calculate_recommendation_scores(options, priority):
     return scored
 
 
-def rank_recommendations(options, top_n):
-    return options.sort_values("final_score", ascending=False).head(top_n)
+def rank_recommendations(options, top_n, priority):
+    sort_columns = ["final_score"]
+    priority_column = PRIORITY_SORT_COLUMNS.get(priority)
+    if priority_column in options.columns and priority_column not in sort_columns:
+        sort_columns.append(priority_column)
+    if "requirement_match_score" in options.columns and "requirement_match_score" not in sort_columns:
+        sort_columns.append("requirement_match_score")
+    return options.sort_values(sort_columns, ascending=[False] * len(sort_columns)).head(top_n)
 
 
 def recommend_suppliers(metrics_df, category, quantity, budget, min_quality, deadline, priority, top_n):
@@ -1238,14 +1056,14 @@ def recommend_suppliers(metrics_df, category, quantity, budget, min_quality, dea
     if not is_valid:
         return pd.DataFrame()
 
-    options = filter_supplier_options(metrics_df, category, budget, min_quality, deadline)
+    options = filter_supplier_options(metrics_df, category, budget, min_quality, deadline, quantity)
     if options.empty:
         return options
 
-    options = calculate_requirement_match(options, quantity, budget, deadline)
+    options = calculate_requirement_match(options, quantity, budget, deadline, priority)
     options = calculate_recommendation_scores(options, priority)
     options["explanation"] = options.apply(lambda row: explain_supplier(row, budget, deadline), axis=1)
-    return rank_recommendations(options, top_n)
+    return rank_recommendations(options, top_n, priority)
 
 
 def build_backup_zip(db):
@@ -2713,10 +2531,37 @@ def page_user_home(db):
     if "supplier_rank_score" not in metrics_df.columns:
         st.warning("Supplier metrics need to be refreshed by admin from Clean Data.")
         return
-    st.markdown('<div style="height: 1.25rem;"></div>', unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class="page-hero">
+            <div class="page-hero-top">
+                <div class="ui-kicker">SUPPLIER DISCOVERY</div>
+                <h1>Find the right supplier<br>with confidence.</h1>
+                <p>Explore high-performing suppliers, compare risk and keep your favourites close.</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True,
+    )
     title_col, search_col = st.columns([1.55, 1])
     search_text = search_col.text_input("Search", placeholder="Example: S10, Machinery, Food").strip()
     if not search_text:
+        supplier_count = int(metrics_df["supplier"].nunique()) if "supplier" in metrics_df.columns else 0
+        category_count = int(metrics_df["product_category"].nunique()) if "product_category" in metrics_df.columns else 0
+        score_series = pd.to_numeric(metrics_df["supplier_rank_score"], errors="coerce") if "supplier_rank_score" in metrics_df.columns else pd.Series(dtype=float)
+        rating_series = pd.to_numeric(metrics_df["final_rating"], errors="coerce") if "final_rating" in metrics_df.columns else pd.Series(dtype=float)
+        top_score = float(score_series.max()) if not score_series.empty else 0
+        top_rating = float(rating_series.max()) if not rating_series.empty else 0
+        top_score_row = metrics_df.loc[score_series.idxmax()] if not score_series.dropna().empty else {}
+        top_rating_row = metrics_df.loc[rating_series.idxmax()] if not rating_series.dropna().empty else {}
+        top_score_supplier = f"{top_score_row.get('supplier', 'N/A')} - {top_score_row.get('product_category', 'N/A')}" if hasattr(top_score_row, "get") else "N/A"
+        top_rating_supplier = f"{top_rating_row.get('supplier', 'N/A')} - {top_rating_row.get('product_category', 'N/A')}" if hasattr(top_rating_row, "get") else "N/A"
+        st.markdown('<div class="discover-kicker">DISCOVER</div>', unsafe_allow_html=True)
+        m1, m2, m3, m4 = st.columns(4)
+        m1.markdown(f'<div class="metric-card"><div class="label">Suppliers</div><div class="value">{supplier_count}</div><div class="subvalue">Available suppliers</div></div>', unsafe_allow_html=True)
+        m2.markdown(f'<div class="metric-card"><div class="label">Categories</div><div class="value">{category_count}</div><div class="subvalue">Product groups</div></div>', unsafe_allow_html=True)
+        m3.markdown(f'<div class="metric-card"><div class="label">Top score</div><div class="value">{top_score:.0f}/100</div><div class="subvalue">{top_score_supplier}</div></div>', unsafe_allow_html=True)
+        m4.markdown(f'<div class="metric-card"><div class="label">Top rating</div><div class="value">{top_rating:.1f}/5</div><div class="subvalue">{top_rating_supplier}</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="discover-kicker">BEST SUPPLIERS BY CATEGORY</div>', unsafe_allow_html=True)
         title_col.markdown(
             """
             <div class="inline-page-title">
@@ -2842,102 +2687,75 @@ def page_find_supplier(db):
     if metrics_df.empty:
         st.warning("Admin must clean data first.")
         return
-    categories = sorted(metrics_df["product_category"].dropna().unique())
-    with st.form("recommendation_form"):
-        c1, c2 = st.columns(2)
-        category = c1.selectbox("Product Category", categories)
-        quantity = c2.number_input("Quantity", min_value=1, value=1000, step=100)
-        budget = c1.number_input("Budget per Unit USD", min_value=0.0, value=100.0, step=5.0)
-        min_quality = c2.slider("Quality Rating (Supplier)", 1.0, 5.0, 4.0, 0.1)
-        deadline = c1.number_input("Deadline Days", min_value=1, value=14, step=1)
-        priority = c2.selectbox("Priority", list(PRIORITY_WEIGHTS.keys()))
-        top_n = st.slider("Number of Suppliers", 3, 10, 3)
-        submitted = st.form_submit_button("Recommend Suppliers")
-
+    categories = sorted(metrics_df["product_category"].dropna().astype(str).unique())
+    username = st.session_state["user"]["username"]
+    defaults = {"smart_category": categories[0] if categories else "", "smart_quantity": 1000, "smart_budget": 100.0, "smart_quality": 4.0, "smart_deadline": 14, "smart_priority": "Balanced", "smart_top_n": 5}
+    for key, value in defaults.items():
+        st.session_state.setdefault(key, value)
+    st.markdown("""
+    <div class="smart-search-banner"><div><div class="ui-kicker">SMART PROCUREMENT</div><h2>Build your supplier brief</h2><p>Set your business requirements once. SupplyLogix will filter, score, compare and explain the strongest matches.</p></div><div class="smart-ai-orb"><span>✦</span><small>SMART<br>MATCH</small></div></div>
+    """, unsafe_allow_html=True)
+    st.markdown('<div class="smart-section-label">01 · CHOOSE YOUR BUYING STRATEGY</div>', unsafe_allow_html=True)
+    cols=st.columns(5); presets=[("Balanced","⚖️","Best overall"),("Low Cost","◈","Protect budget"),("High Quality","✦","Max quality"),("Fast Delivery","↗","Meet deadline"),("Low Risk","◉","Reduce risk")]
+    for col,(name,icon,desc) in zip(cols,presets):
+        active=st.session_state["smart_priority"]==name
+        if col.button(f"{icon}  {name} · {desc}",key=f"preset_{name}",use_container_width=True,type="primary" if active else "secondary"):
+            st.session_state["smart_priority"]=name
+    st.markdown('<div class="smart-section-label">02 · YOUR REQUIREMENTS</div>',unsafe_allow_html=True)
+    left,right=st.columns([1.08,1],gap="large")
+    with left:
+        st.markdown('<div class="form-mini-title">PRODUCT & VOLUME</div>',unsafe_allow_html=True)
+        category=st.selectbox("Product category",categories,key="smart_category")
+        quantity=st.number_input("Required quantity",min_value=1,step=100,key="smart_quantity",help="Minimum supplier capacity considered in the matching score.")
+        deadline=st.number_input("Maximum acceptable delivery delay (days)",min_value=1,step=1,key="smart_deadline")
+    with right:
+        st.markdown('<div class="form-mini-title">COMMERCIAL & QUALITY</div>',unsafe_allow_html=True)
+        budget=st.number_input("Maximum budget per unit (USD)",min_value=0.0,step=5.0,key="smart_budget")
+        min_quality=st.slider("Minimum supplier quality",1.0,5.0,step=0.1,key="smart_quality")
+        top_n=st.slider("Number of Suppliers",3,10,key="smart_top_n")
+    preview=filter_supplier_options(metrics_df,category,budget,min_quality,deadline,quantity)
+    if preview.empty:
+        preview_count=0; preview_text="No exact matches yet — loosen one requirement to unlock candidates."; tone="warning"
+    else:
+        preview_count=int(preview["supplier"].nunique()); median_price=float(pd.to_numeric(preview["avg_unit_price"],errors="coerce").median()); median_delay=float(pd.to_numeric(preview["avg_delay"],errors="coerce").median()); preview_text=f"{preview_count} supplier(s) pass your hard filters · typical unit price ${median_price:,.2f} · typical delay {median_delay:.1f} days"; tone="good"
+    st.markdown(f"""<div class="smart-preview {tone}"><div class="preview-score"><strong>{preview_count}</strong><span>eligible<br>suppliers</span></div><div><b>Live match preview</b><p>{preview_text}</p></div><div class="preview-pill">{st.session_state["smart_priority"]}</div></div>""",unsafe_allow_html=True)
+    submitted=st.button("✦  Find my best supplier matches",use_container_width=True,type="primary")
     if submitted:
-        results = recommend_suppliers(metrics_df, category, quantity, budget, min_quality, deadline, priority, top_n)
-        log_doc = {
-            "username": st.session_state["user"]["username"],
-            "category": category,
-            "quantity": quantity,
-            "budget": budget,
-            "min_quality": min_quality,
-            "deadline": deadline,
-            "priority": priority,
-            "result_count": len(results),
-            "selected_supplier": None,
-            "status": "recommended",
-            "created_at": datetime.now(timezone.utc),
-        }
-        inserted = db[COLLECTIONS["recommendation_logs"]].insert_one(log_doc)
-        st.session_state["last_recommendation_id"] = str(inserted.inserted_id)
-        st.session_state["last_results"] = results.to_dict("records")
+        priority=st.session_state["smart_priority"]; results=recommend_suppliers(metrics_df,category,quantity,budget,min_quality,deadline,priority,top_n)
+        log_doc={"username":username,"category":category,"quantity":quantity,"budget":budget,"min_quality":min_quality,"deadline":deadline,"priority":priority,"requested_supplier_count":top_n,"result_count":len(results),"selected_supplier":None,"status":"recommended","created_at":datetime.now(timezone.utc)}
+        inserted=db[COLLECTIONS["recommendation_logs"]].insert_one(log_doc); st.session_state["last_recommendation_id"]=str(inserted.inserted_id); st.session_state["last_results"]=results.to_dict("records"); st.session_state["last_search_brief"]={"category":category,"quantity":quantity,"budget":budget,"quality":min_quality,"deadline":deadline,"priority":priority,"requested_supplier_count":top_n}
         if results.empty:
-            st.error("No supplier satisfies all requirements.")
-            category_options = metrics_df[metrics_df["product_category"].str.lower() == category.lower()].copy()
+            st.error("No supplier satisfies all requirements."); category_options=metrics_df[metrics_df["product_category"].str.lower()==category.lower()].copy()
             if not category_options.empty:
-                st.info("Closest available suppliers in this category are shown below. Try increasing budget/deadline or lowering quality.")
-                ui_dataframe(
-                    safe_metric_table(
-                        category_options.sort_values("supplier_rank_score", ascending=False),
-                        ["supplier", "product_category", "avg_unit_price", "avg_delay", "quality_rating", "final_rating", "risk_level", "supplier_rank_score"],
-                    ),
-                    width="stretch",
-                )
+                st.info("Try increasing the budget or deadline, or lowering the minimum quality requirement."); ui_dataframe(safe_metric_table(category_options.sort_values("supplier_rank_score",ascending=False),["supplier","product_category","avg_unit_price","avg_delay","quality_rating","final_rating","risk_level","supplier_rank_score"]),width="stretch")
             return
-        st.success(f"Found {len(results)} recommended suppliers.")
-
-    results = pd.DataFrame(st.session_state.get("last_results", []))
-    if not results.empty:
-        st.subheader("Recommendation Results")
-        username = st.session_state["user"]["username"]
-        current_hot = hot_supplier_keys(db, username)
-        for _, row in results.iterrows():
-            with st.container(border=True):
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("Supplier", row["supplier"])
-                c2.metric("Final Score", f"{row['final_score']}/100")
-                c3.metric("Risk", f"{row['risk_level']} ({row['risk_score']}/100)")
-                c4.metric("Rating", f"{row['final_rating']}/5")
-                st.write(row["explanation"])
-                st.caption(
-                    f"Details: category {row['product_category']} | average delay {row['avg_delay']} days | "
-                    f"unit price {row['avg_unit_price']} | user rating {row['user_rating']}/5 | trend {row['trend_status']}"
-                )
-                select_col, hot_col = st.columns([4, 1])
-                if select_col.button(f"Select {row['supplier']} for {row['product_category']}", key=f"select_{row['supplier']}_{row['product_category']}"):
-                    selection = {
-                        "username": st.session_state["user"]["username"],
-                        "supplier": row["supplier"],
-                        "product_category": row["product_category"],
-                        "final_score": row["final_score"],
-                        "risk_level": row["risk_level"],
-                        "status": "selected",
-                        "created_at": datetime.now(timezone.utc),
-                    }
-                    db[COLLECTIONS["recommendation_logs"]].insert_one(selection)
-                    log_activity(db, "supplier_selected", st.session_state["user"]["username"], selection)
-                    st.session_state["selected_supplier"] = selection
-                    st.success(f"Selected {row['supplier']}. You can rate it after the experience.")
-                is_favourite = (str(row["supplier"]), str(row["product_category"])) in current_hot
-                star_label = "★" if is_favourite else "☆"
-                star_help = "Remove from favourite supplier" if is_favourite else "Add to favourite supplier"
-                if hot_col.button(star_label, key=f"hot_{row['supplier']}_{row['product_category']}", help=star_help):
-                    if is_favourite:
-                        remove_hot_supplier(db, username, row["supplier"], row["product_category"])
-                        log_activity(db, "favourite_supplier_removed", username, {"supplier": row["supplier"], "category": row["product_category"]})
-                        st.success(f"{row['supplier']} removed from favourite supplier.")
-                    else:
-                        save_hot_supplier(db, username, row)
-                        log_activity(db, "favourite_supplier_saved", username, {"supplier": row["supplier"], "category": row["product_category"]})
-                        st.success(f"{row['supplier']} saved as a favourite supplier.")
-                    st.rerun()
-
-        st.subheader("Supplier Comparison")
-        ui_dataframe(
-            safe_metric_table(results, ["supplier", "product_category", "final_score", "final_rating", "user_rating", "risk_level", "avg_delay", "avg_unit_price", "trend_status"]),
-            width="stretch",
-        )
+        if len(results) < top_n:
+            st.warning(f"Only {len(results)} supplier(s) match your requirements, so the system cannot show all {top_n} requested suppliers.")
+        else:
+            st.success(f"Smart match complete — showing {len(results)} of {top_n} requested suppliers.")
+    results=pd.DataFrame(st.session_state.get("last_results",[]))
+    if results.empty:
+        st.markdown("""<div class="empty-smart-state"><span>✦</span><h3>Your shortlist will appear here</h3><p>Choose your strategy and requirements above, then let SupplyLogix rank the best-fit suppliers.</p></div>""",unsafe_allow_html=True); return
+    brief=st.session_state.get("last_search_brief",{}); st.markdown('<div class="smart-section-label">03 · MOST MATCHED REQUIREMENT</div>',unsafe_allow_html=True)
+    st.markdown(explain_best_requirement_match(results.iloc[0], brief, len(results)))
+    current_hot=hot_supplier_keys(db,username)
+    for rank,(_,row) in enumerate(results.iterrows(),start=1):
+        score=float(row["final_score"]); risk=str(row["risk_level"])
+        with st.container(border=True):
+            a,b=st.columns([3.6,1])
+            with a: st.markdown(f"""<div class="supplier-result-head"><div class="rank-badge">#{rank}</div><div><h3>{row["supplier"]}</h3><p>{row["product_category"]} · {row["trend_status"]} trend</p></div></div>""",unsafe_allow_html=True)
+            with b: st.markdown(f"""<div class="match-score"><span>SMART MATCH</span><strong>{score:.0f}</strong><small>/100</small></div>""",unsafe_allow_html=True)
+            q1,q2,q3,q4=st.columns(4); q1.metric("Rating",f"{float(row['final_rating']):.1f}/5"); q2.metric("Risk",f"{risk} · {float(row['risk_score']):.0f}"); q3.metric("Avg delay",f"{float(row['avg_delay']):.1f} d"); q4.metric("Unit price",f"${float(row['avg_unit_price']):,.2f}")
+            st.markdown(f"""<div class="reason-card"><b>Why this supplier?</b><span>{row["explanation"]}</span></div>""",unsafe_allow_html=True)
+            select_col,hot_col=st.columns([5,1])
+            if select_col.button(f"Select {row['supplier']}",key=f"select_{row['supplier']}_{row['product_category']}",use_container_width=True):
+                save_selected_supplier(db,username,row,"smart_recommendation"); st.success(f"Selected {row['supplier']}. You can rate it after the experience.")
+            fav=(str(row["supplier"]),str(row["product_category"])) in current_hot
+            if hot_col.button("★ Saved" if fav else "☆ Save",key=f"hot_{row['supplier']}_{row['product_category']}",use_container_width=True):
+                if fav: remove_hot_supplier(db,username,row["supplier"],row["product_category"]); log_activity(db,"favourite_supplier_removed",username,{"supplier":row["supplier"],"category":row["product_category"]})
+                else: save_hot_supplier(db,username,row); log_activity(db,"favourite_supplier_saved",username,{"supplier":row["supplier"],"category":row["product_category"]})
+                st.rerun()
+    st.markdown('<div class="smart-section-label">04 · DECISION COMPARISON</div>',unsafe_allow_html=True); ui_dataframe(safe_metric_table(results,["supplier","product_category","final_score","final_rating","user_rating","risk_level","risk_score","avg_delay","avg_unit_price","trend_status"]),width="stretch")
 
 
 def page_rate_supplier(db):
@@ -3055,6 +2873,34 @@ def page_user_history(db):
         )
 
 
+def smart_sidebar_nav(title, pages, icons, descriptions, current_page, state_key):
+    """Premium button-based sidebar navigation with no radio controls."""
+    st.markdown('<div class="smart-nav">', unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="smart-nav-section"><span>{title}</span><span>{len(pages)} sections</span></div>',
+        unsafe_allow_html=True,
+    )
+    for idx, item in enumerate(pages):
+        icon = icons.get(item, "•")
+        desc = descriptions.get(item, "Open section")
+        if item == current_page:
+            st.markdown(
+                f"""<div class="smart-nav-item smart-nav-active">
+                    <div class="nav-icon">{icon}</div>
+                    <div class="nav-copy"><div class="nav-title">{item}</div><div class="nav-desc">{desc}</div></div>
+                    <div class="nav-arrow">◆</div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown('<div class="smart-nav-button">', unsafe_allow_html=True)
+            if st.button(f"{icon}   {item}", key=f"smart_nav_{state_key}_{idx}", use_container_width=True, help=desc):
+                st.session_state[state_key] = item
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
 def render_app():
     inject_custom_css()
     db = get_database()
@@ -3076,54 +2922,71 @@ def render_app():
                 <div class="brand-icon">🚚</div>
                 <div>
                     <div class="brand-name">Supply<span>Logix</span></div>
-                    <div class="brand-subtitle">Supplier Intelligence</div>
+                    <div class="brand-subtitle">AI Supplier Intelligence</div>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-        st.caption(f"{user['username']} ({user['role']})")
-        if st.button("Logout"):
+        st.caption(f"Signed in as **{user['username']}** · {user['role'].title()}")
+        if st.button("↪  Sign out", use_container_width=True):
             clear_login_session(db)
             st.session_state.clear()
             st.rerun()
         if user["role"] == "admin":
-            st.markdown('<div class="sidebar-role-badge">🛠️ Admin Pages<small>Data control and analysis</small></div>', unsafe_allow_html=True)
+            st.markdown('<div class="sidebar-role-badge">🛠️ Admin Workspace<small>Data control, analytics and accounts</small></div>', unsafe_allow_html=True)
             pages = ["Dashboard", "Upload Data", "Clean Data", "View Data", "EDA & KPI", "User Rating", "Manage Accounts"]
             page_icons = {
-                "Dashboard": "🏠 Dashboard",
-                "Upload Data": "📤 Upload Data",
-                "Clean Data": "🧹 Clean Data",
-                "View Data": "📋 View Data",
-                "EDA & KPI": "📈 EDA & KPI",
-                "User Rating": "⭐ User Rating",
-                "Manage Accounts": "👥 Manage Accounts",
+                "Dashboard": "⌂", "Upload Data": "↑", "Clean Data": "✦",
+                "View Data": "▦", "EDA & KPI": "◒", "User Rating": "★", "Manage Accounts": "♙",
+            }
+            page_desc = {
+                "Dashboard": "Overview & live alerts", "Upload Data": "Import supplier data",
+                "Clean Data": "Prepare analytics-ready data", "View Data": "Browse operational records",
+                "EDA & KPI": "Explore performance metrics", "User Rating": "Review feedback signals",
+                "Manage Accounts": "Users & approvals",
             }
             if st.session_state.get("admin_nav_target") in pages:
                 st.session_state["admin_page"] = st.session_state.pop("admin_nav_target")
             if st.session_state.get("admin_page") not in pages:
                 st.session_state["admin_page"] = "Dashboard"
-            st.radio("Admin Pages", pages, key="admin_page", format_func=lambda page_name: page_icons.get(page_name, page_name))
+            smart_sidebar_nav("Admin workspace", pages, page_icons, page_desc, st.session_state["admin_page"], "admin_page")
             page = st.session_state["admin_page"]
         elif user["role"] == "supplier":
-            st.markdown('<div class="sidebar-role-badge">🚚 Supplier Pages<small>Performance and prediction</small></div>', unsafe_allow_html=True)
+            st.markdown('<div class="sidebar-role-badge">🚚 Supplier Workspace<small>Performance, trends and forecasting</small></div>', unsafe_allow_html=True)
             supplier_pages = ["Supplier Dashboard", "Supplier Trend", "Future Prediction"]
-            supplier_icons = {
-                "Supplier Dashboard": "📊 Dashboard",
-                "Supplier Trend": "📈 Trend",
-                "Future Prediction": "🔮 Future Prediction",
+            supplier_icons = {"Supplier Dashboard": "◉", "Supplier Trend": "↗", "Future Prediction": "✦"}
+            supplier_desc = {
+                "Supplier Dashboard": "Your performance snapshot",
+                "Supplier Trend": "Ratings & delivery trends",
+                "Future Prediction": "Forecast future performance",
             }
-            page = st.radio("Supplier Pages", supplier_pages, format_func=lambda page_name: supplier_icons.get(page_name, page_name))
+            if st.session_state.get("supplier_page") not in supplier_pages:
+                st.session_state["supplier_page"] = supplier_pages[0]
+            smart_sidebar_nav("Supplier workspace", supplier_pages, supplier_icons, supplier_desc, st.session_state["supplier_page"], "supplier_page")
+            page = st.session_state["supplier_page"]
         else:
-            st.markdown('<div class="sidebar-role-badge">👤 User Pages<small>Find, rate, and review</small></div>', unsafe_allow_html=True)
+            st.markdown('<div class="sidebar-role-badge">👤 Procurement Workspace<small>Discover, rate and manage suppliers</small></div>', unsafe_allow_html=True)
             user_pages = ["Home", "Find Supplier", "Rate Supplier", "My History"]
-            user_icons = {
-                "Home": "🏠 Home",
-                "Find Supplier": "🔎 Find Supplier",
-                "Rate Supplier": "⭐ Rate Supplier",
-                "My History": "🕘 My History",
+            user_icons = {"Home": "⌂", "Find Supplier": "⌕", "Rate Supplier": "★", "My History": "◷"}
+            user_desc = {
+                "Home": "Your supplier intelligence hub",
+                "Find Supplier": "Build a smart supplier shortlist",
+                "Rate Supplier": "Share performance feedback",
+                "My History": "Saved suppliers & activity",
             }
-            page = st.radio("User Pages", user_pages, format_func=lambda page_name: user_icons.get(page_name, page_name))
+            if st.session_state.get("user_page") not in user_pages:
+                st.session_state["user_page"] = user_pages[0]
+            smart_sidebar_nav("Procurement workspace", user_pages, user_icons, user_desc, st.session_state["user_page"], "user_page")
+            page = st.session_state["user_page"]
+        st.markdown(
+            """
+            <div class="sidebar-footer">
+                <b>SUPPLYLOGIX</b>
+                <span>Supplier intelligence · risk · recommendations</span>
+            </div>
+            """, unsafe_allow_html=True,
+        )
 
     if page == "Dashboard":
         page_admin_dashboard(db)
