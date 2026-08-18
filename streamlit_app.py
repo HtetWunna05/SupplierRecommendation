@@ -447,7 +447,7 @@ def style_table(df):
         "requirement_match_score",
         "trend_score",
         "quality_score",
-        "Data Quality",
+        "Raw Data Quality",
         "Value",
     ]
     rating_columns = [
@@ -520,6 +520,7 @@ DATA_EXPORT_KEYS = [
 HOT_SUPPLIERS_COLLECTION = COLLECTIONS.get("hot_suppliers", "hot_suppliers")
 AUTH_TOKEN_PARAM = "login_token"
 PRODUCT_TRENDS_PATH = Path(__file__).parent / "data" / "product_trends.csv"
+PRODUCT_TRENDS_CLEAN_MARKER = Path(__file__).parent / "data" / ".product_trends_cleaned"
 
 PRIORITY_WEIGHTS = {
     "Balanced": {"kpi": 0.30, "rating": 0.20, "risk": 0.25, "match": 0.25},
@@ -585,11 +586,12 @@ def create_login_session(db, user_doc):
             "created_at": datetime.now(timezone.utc),
         }
     )
+    st.session_state[AUTH_TOKEN_PARAM] = token
     st.query_params[AUTH_TOKEN_PARAM] = token
 
 
 def restore_login_session(db):
-    token = st.query_params.get(AUTH_TOKEN_PARAM)
+    token = st.query_params.get(AUTH_TOKEN_PARAM) or st.session_state.get(AUTH_TOKEN_PARAM)
     if not token:
         return False
     session_doc = db[COLLECTIONS["auth_sessions"]].find_one({"token": token}, {"_id": 0})
@@ -603,13 +605,19 @@ def restore_login_session(db):
     if not user_doc.get("is_active", False):
         return False
     st.session_state["user"] = session_user_from_doc(user_doc)
+    st.session_state[AUTH_TOKEN_PARAM] = token
+    st.query_params[AUTH_TOKEN_PARAM] = token
     return True
 
 
 def clear_login_session(db):
-    token = st.query_params.get(AUTH_TOKEN_PARAM)
+    token = st.query_params.get(AUTH_TOKEN_PARAM) or st.session_state.get(AUTH_TOKEN_PARAM)
     if token:
         db[COLLECTIONS["auth_sessions"]].delete_one({"token": token})
+        st.session_state.pop(AUTH_TOKEN_PARAM, None)
+    else:
+        st.session_state.pop(AUTH_TOKEN_PARAM, None)
+    if AUTH_TOKEN_PARAM in st.query_params:
         del st.query_params[AUTH_TOKEN_PARAM]
 
 
@@ -892,6 +900,92 @@ def clean_product_trends(raw_df):
     return df.sort_values(["product_category", "product_name", "month"]).reset_index(drop=True)
 
 
+def product_trend_cleaning_is_saved(db):
+    if st.session_state.get("cleaned_product_trend_rows", 0) > 0:
+        return True
+    if PRODUCT_TRENDS_CLEAN_MARKER.exists():
+        return True
+
+    last_clean = db[COLLECTIONS["activity_logs"]].find_one(
+        {"action": "product_trend_cleaning_completed"},
+        sort=[("created_at", -1)],
+    )
+    if not last_clean:
+        return False
+
+    last_dirty = db[COLLECTIONS["activity_logs"]].find_one(
+        {"action": {"$in": ["product_trends_updated", "product_trends_updated_from_path", "product_trend_data_deleted"]}},
+        sort=[("created_at", -1)],
+    )
+    if not last_dirty:
+        return True
+    return bool(last_clean.get("created_at") and last_dirty.get("created_at") and last_clean["created_at"] > last_dirty["created_at"])
+
+
+def mark_product_trends_cleaned(row_count):
+    PRODUCT_TRENDS_CLEAN_MARKER.parent.mkdir(parents=True, exist_ok=True)
+    PRODUCT_TRENDS_CLEAN_MARKER.write_text(str(row_count), encoding="utf-8")
+    st.session_state["cleaned_product_trend_rows"] = row_count
+
+
+def mark_product_trends_dirty():
+    if PRODUCT_TRENDS_CLEAN_MARKER.exists():
+        PRODUCT_TRENDS_CLEAN_MARKER.unlink()
+    st.session_state.pop("cleaned_product_trend_rows", None)
+
+
+def supplier_cleaning_difference_tables(raw_df, clean_df, limit=10):
+    if raw_df.empty or clean_df.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
+    raw_compare = raw_df[list(RAW_TO_CLEAN_COLUMNS)].rename(columns=RAW_TO_CLEAN_COLUMNS).copy()
+    clean_compare = clean_df.copy()
+    display_columns = ["order_id", "supplier", "product_category", "disruption_type", "disruption_severity"]
+    raw_compare = raw_compare[[col for col in display_columns if col in raw_compare.columns]]
+    clean_compare = clean_compare[[col for col in display_columns if col in clean_compare.columns]]
+    merged = raw_compare.merge(clean_compare, on="order_id", suffixes=("_before", "_after"), how="inner")
+
+    changed_mask = pd.Series(False, index=merged.index)
+    for col in ["disruption_type", "disruption_severity"]:
+        before_col = f"{col}_before"
+        after_col = f"{col}_after"
+        if before_col in merged.columns and after_col in merged.columns:
+            before_missing = merged[before_col].isna() | merged[before_col].astype(str).str.strip().eq("")
+            changed_value = merged[before_col].fillna("<missing>").astype(str) != merged[after_col].fillna("<missing>").astype(str)
+            changed_mask = changed_mask | before_missing | changed_value
+
+    changed = merged[changed_mask].head(limit)
+    if changed.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
+    before_table = pd.DataFrame(
+        {
+            "order_id": changed["order_id"],
+            "supplier": changed.get("supplier_before", changed.get("supplier_after")),
+            "product_category": changed.get("product_category_before", changed.get("product_category_after")),
+            "disruption_type": changed["disruption_type_before"].fillna("<missing>"),
+            "disruption_severity": changed["disruption_severity_before"].fillna("<missing>"),
+        }
+    )
+    after_table = pd.DataFrame(
+        {
+            "order_id": changed["order_id"],
+            "supplier": changed.get("supplier_after", changed.get("supplier_before")),
+            "product_category": changed.get("product_category_after", changed.get("product_category_before")),
+            "disruption_type": changed["disruption_type_after"].fillna("<missing>"),
+            "disruption_severity": changed["disruption_severity_after"].fillna("<missing>"),
+        }
+    )
+    return before_table.reset_index(drop=True), after_table.reset_index(drop=True)
+
+
+def fmt_number(value, decimals=2):
+    try:
+        return f"{float(value):.{decimals}f}"
+    except (TypeError, ValueError):
+        return "0.00"
+
+
 def risk_level(score):
     if score < 35:
         return "Low"
@@ -1046,6 +1140,17 @@ def safe_metric_table(metrics_df, columns):
     if not existing:
         return pd.DataFrame()
     return metrics_df[existing]
+
+
+def format_product_trend_display(df):
+    formatted = df.copy()
+    for col in ["trend_score", "growth_rate", "predicted_next_trend_score", "trend_score_change"]:
+        if col in formatted.columns:
+            formatted[col] = pd.to_numeric(formatted[col], errors="coerce").fillna(0).round(2)
+    for col in ["search_volume", "sales_count"]:
+        if col in formatted.columns:
+            formatted[col] = pd.to_numeric(formatted[col], errors="coerce").fillna(0).round(0).astype(int)
+    return formatted
 
 
 PRODUCT_TREND_REQUIRED_COLUMNS = [
@@ -1513,11 +1618,12 @@ def page_admin_dashboard(db):
     c5.metric("Avg Rating", round(metrics_df["final_rating"].mean(), 2) if not metrics_df.empty else 0)
 
     quality = data_quality_summary(raw_df)
-    st.subheader("Clean Data")
+    st.subheader("Raw Data Quality Preview")
+    st.caption("These checks are calculated from uploaded raw data. Cleaned rows appear after running cleaning.")
     sc1, sc2, sc3, sc4 = st.columns(4)
     sc1.metric("Raw Rows", len(raw_df))
     sc2.metric("Cleaned Rows", len(clean_df))
-    sc3.metric("Data Quality", f"{quality['score']}/100")
+    sc3.metric("Raw Data Quality", f"{quality['score']}/100")
     sc4.metric("Missing Values", quality["missing_values"])
     if len(raw_df) > 0:
         st.caption(f"Duplicates: {quality['duplicate_orders']} | Invalid dates: {quality['invalid_dates']}")
@@ -1654,6 +1760,7 @@ def page_upload(db):
             if st.button("Save Product Trend Dataset"):
                 PRODUCT_TRENDS_PATH.parent.mkdir(parents=True, exist_ok=True)
                 trend_df.to_csv(PRODUCT_TRENDS_PATH, index=False)
+                mark_product_trends_dirty()
                 log_activity(
                     db,
                     "product_trends_updated",
@@ -1678,6 +1785,7 @@ def page_upload(db):
                 return
             PRODUCT_TRENDS_PATH.parent.mkdir(parents=True, exist_ok=True)
             trend_df.to_csv(PRODUCT_TRENDS_PATH, index=False)
+            mark_product_trends_dirty()
             log_activity(
                 db,
                 "product_trends_updated_from_path",
@@ -1709,17 +1817,16 @@ def page_clean(db):
             return
 
         raw_trend_df = pd.read_csv(PRODUCT_TRENDS_PATH)
-        try:
-            cleaned_trend_preview = clean_product_trends(raw_trend_df)
-        except Exception as exc:
-            cleaned_trend_preview = pd.DataFrame()
-            st.error(f"Product trend data cannot be cleaned yet: {exc}")
         quality = product_trend_quality_summary(raw_trend_df)
+        product_trend_is_cleaned = product_trend_cleaning_is_saved(db)
+        cleaned_trend_rows = len(raw_trend_df) if product_trend_is_cleaned else 0
+        st.subheader("Raw Product Trend Quality Preview")
+        st.caption("These checks are calculated from uploaded raw product trend data. Cleaned rows appear after running cleaning.")
 
         c1, c2, c3, c4, c5 = st.columns(5)
         c1.metric("Raw Rows", len(raw_trend_df))
-        c2.metric("Cleaned Rows", len(cleaned_trend_preview))
-        c3.metric("Data Quality Score", f"{quality['score']}/100")
+        c2.metric("Cleaned Rows", cleaned_trend_rows)
+        c3.metric("Raw Data Quality", f"{quality['score']}/100")
         c4.metric("Missing Values", quality["missing_values"])
         c5.metric("Duplicate Rows", quality["duplicate_rows"])
         st.caption(f"Invalid months: {quality['invalid_months']}")
@@ -1747,12 +1854,17 @@ def page_clean(db):
                     st.session_state["user"]["username"],
                     {"records": len(cleaned_trend_df), "quality_score": quality["score"]},
                 )
+                mark_product_trends_cleaned(len(cleaned_trend_df))
                 st.success(f"Cleaned {len(cleaned_trend_df)} product trend rows.")
-                st.subheader("Cleaned Product Trend Table")
-                st.caption("This cleaned product trend table is saved to the product trend CSV and used by the Supplier Dashboard.")
-                ui_dataframe(cleaned_trend_df, width="stretch")
             except Exception as exc:
                 st.error(str(exc))
+
+        if product_trend_cleaning_is_saved(db):
+            saved_trend_df = pd.read_csv(PRODUCT_TRENDS_PATH)
+            if not saved_trend_df.empty:
+                st.subheader("Cleaned Product Trend Table")
+                st.caption("This cleaned product trend table appears after cleaning and is used by the Supplier Dashboard.")
+                ui_dataframe(saved_trend_df, width="stretch")
         return
 
     st.subheader("Supplier")
@@ -1762,15 +1874,13 @@ def page_clean(db):
         return
 
     quality = data_quality_summary(raw_df)
-    try:
-        cleaned_preview = clean_orders(raw_df)
-    except Exception as exc:
-        cleaned_preview = pd.DataFrame()
-        st.error(f"Supplier data cannot be cleaned yet: {exc}")
+    cleaned_rows = db[COLLECTIONS["cleaned_orders"]].count_documents({})
+    st.subheader("Raw Supplier Data Quality Preview")
+    st.caption("These checks are calculated from uploaded raw supplier data. Cleaned rows appear after running cleaning.")
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Raw Rows", len(raw_df))
-    c2.metric("Cleaned Rows", len(cleaned_preview))
-    c3.metric("Data Quality Score", f"{quality['score']}/100")
+    c2.metric("Cleaned Rows", cleaned_rows)
+    c3.metric("Raw Data Quality", f"{quality['score']}/100")
     c4.metric("Missing Values", quality["missing_values"])
     c5.metric("Duplicate Orders", quality["duplicate_orders"])
     st.caption(f"Invalid dates: {quality['invalid_dates']}")
@@ -1793,11 +1903,26 @@ def page_clean(db):
             metrics_df = refresh_metrics(db)
             log_activity(db, "cleaning_completed", st.session_state["user"]["username"], {"records": count, "quality_score": quality["score"]})
             st.success(f"Cleaned {count} supplier order rows and refreshed {len(metrics_df)} supplier metric rows.")
-            st.subheader("Cleaned Supplier Data Table")
-            st.caption("This cleaned supplier order table is saved in MongoDB and used to calculate supplier metrics.")
-            ui_dataframe(clean_df, width="stretch")
         except Exception as exc:
             st.error(str(exc))
+
+    saved_clean_df = load_collection(db, COLLECTIONS["cleaned_orders"])
+    if not saved_clean_df.empty:
+        st.subheader("Cleaned Supplier Data Table")
+        st.caption("This cleaned supplier order table stays visible after rerun because it is saved in MongoDB.")
+        ui_dataframe(saved_clean_df, width="stretch")
+
+        before_diff, after_diff = supplier_cleaning_difference_tables(raw_df, saved_clean_df)
+        if not before_diff.empty and not after_diff.empty:
+            st.subheader("Before Cleaning vs After Cleaning Summary")
+            st.caption("Only rows with visible cleaning changes are shown. Missing disruption values are filled as None after cleaning.")
+            before_col, after_col = st.columns(2)
+            with before_col:
+                st.markdown("**Before Cleaning**")
+                ui_dataframe(before_diff, width="stretch")
+            with after_col:
+                st.markdown("**After Cleaning**")
+                ui_dataframe(after_diff, width="stretch")
     return
 
 
@@ -1851,6 +1976,7 @@ def page_view_data(db):
         ):
             if PRODUCT_TRENDS_PATH.exists():
                 PRODUCT_TRENDS_PATH.unlink()
+            mark_product_trends_dirty()
             log_activity(db, "product_trend_data_deleted", st.session_state["user"]["username"], {"backup_confirmed": True})
             st.success("Product trend data was deleted.")
             st.rerun()
@@ -1889,6 +2015,7 @@ def page_view_data(db):
     confirm_delete = st.text_input("Type DELETE to confirm reset")
     if st.button("Delete All Supplier Data", type="primary", disabled=not (backup_saved and confirm_delete == "DELETE")):
         clear_supplier_data(db)
+        st.session_state.pop("cleaned_supplier_rows", None)
         log_activity(db, "supplier_data_deleted", st.session_state["user"]["username"], {"backup_confirmed": True})
         st.success("Supplier data, cleaned data, metrics, user ratings, and recommendation history were deleted.")
         st.rerun()
@@ -1972,7 +2099,20 @@ def page_eda(db):
     with col1:
         st.plotly_chart(px.bar(metrics_df.nlargest(10, "supplier_rank_score"), x="supplier", y="supplier_rank_score", color="product_category", title="Top 10 Suppliers by Score"), width="stretch")
     with col2:
-        st.plotly_chart(px.bar(metrics_df.nlargest(10, "risk_score"), x="supplier", y="risk_score", color="risk_level", title="Highest Risk Suppliers"), width="stretch")
+        high_risk_chart = metrics_df.nlargest(10, "risk_score").copy()
+        high_risk_chart["supplier_category"] = high_risk_chart["supplier"] + " | " + high_risk_chart["product_category"]
+        st.plotly_chart(
+            px.bar(
+                high_risk_chart,
+                x="supplier_category",
+                y="risk_score",
+                color="risk_level",
+                hover_data=["supplier", "product_category", "risk_score", "risk_level"],
+                title="Highest Risk Suppliers by Category",
+                labels={"supplier_category": "supplier | category"},
+            ),
+            width="stretch",
+        )
 
     col3, col4 = st.columns(2)
     with col3:
@@ -1992,8 +2132,32 @@ def page_eda(db):
             st.plotly_chart(px.bar(events, x="event_type", y="size", title="Feedback Event Summary"), width="stretch")
 
 
-def monthly_category_trend(clean_df, category):
+def monthly_category_trend(clean_df, category, supplier_id=None):
     df = clean_df[clean_df["product_category"] == category].copy()
+    if supplier_id is not None and "supplier" in df.columns:
+        df = df[df["supplier"] == supplier_id].copy()
+    if df.empty:
+        return pd.DataFrame()
+    df["order_date"] = pd.to_datetime(df["order_date"], errors="coerce")
+    df = df.dropna(subset=["order_date"])
+    for col in ["quantity_ordered", "delay_days", "supply_risk_flag", "has_disruption"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+    df["month"] = df["order_date"].dt.to_period("M").astype(str)
+    return (
+        df.groupby("month", as_index=False)
+        .agg(
+            total_orders=("order_id", "count"),
+            total_quantity=("quantity_ordered", "sum"),
+            avg_delay=("delay_days", "mean"),
+            risk_count=("supply_risk_flag", "sum"),
+            disruption_count=("has_disruption", "sum"),
+        )
+        .round(2)
+    )
+
+
+def monthly_supplier_trend(clean_df, supplier_id):
+    df = clean_df[clean_df["supplier"] == supplier_id].copy()
     if df.empty:
         return pd.DataFrame()
     df["order_date"] = pd.to_datetime(df["order_date"], errors="coerce")
@@ -2132,9 +2296,9 @@ def future_trending_products(product_df):
                 "product_name": product_name,
                 "product_category": latest["product_category"],
                 "latest_month": latest["month"],
-                "current_trend_score": round(float(latest["trend_score"]), 2),
-                "recent_growth_rate": round(float(latest["growth_rate"]), 2),
-                "current_sales_count": int(latest["sales_count"]),
+                "trend_score": round(float(latest["trend_score"]), 2),
+                "growth_rate": round(float(latest["growth_rate"]), 2),
+                "sales_count": int(latest["sales_count"]),
                 "predicted_next_trend_score": round(predicted_score, 2),
                 "trend_direction": trend_direction,
                 "trend_score_change": round(float(avg_change), 2),
@@ -2160,11 +2324,22 @@ def get_supplier_page_context(db):
         return None
 
     category_options = sorted(supplier_metrics["product_category"].dropna().unique())
-    category = st.selectbox("Your Product Category", category_options)
+    saved_category = st.session_state.get("supplier_selected_category")
+    if saved_category not in category_options:
+        saved_category = category_options[0]
+        st.session_state["supplier_selected_category"] = saved_category
+    widget_key = f"supplier_category_picker_{st.session_state.get('supplier_page', 'dashboard')}"
+    category = st.selectbox(
+        "Your Product Category",
+        category_options,
+        index=category_options.index(saved_category),
+        key=widget_key,
+    )
+    st.session_state["supplier_selected_category"] = category
     metric_row = supplier_metrics[supplier_metrics["product_category"] == category].iloc[0]
     category_df = clean_df[clean_df["product_category"] == category].copy()
     category_metrics = metrics_df[metrics_df["product_category"] == category].copy()
-    trend_df = monthly_category_trend(clean_df, category)
+    trend_df = monthly_category_trend(clean_df, category, supplier_id)
 
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Supplier", supplier_id)
@@ -2246,6 +2421,7 @@ def page_supplier_dashboard(db):
 
     supplier_id = context["supplier_id"]
     category = context["category"]
+    supplier_id = context["supplier_id"]
     metric_row = context["metric_row"]
     trend_df = context["trend_df"]
     category_metrics = context["category_metrics"]
@@ -2256,15 +2432,18 @@ def page_supplier_dashboard(db):
     _, feedback_count, avg_feedback = render_supplier_feedback(supplier_id, category, ratings_df)
 
     st.subheader("Supplier Dashboard Summary")
-    predicted_demand, demand_direction, _ = predict_next_demand(trend_df)
+    supplier_trend_df = monthly_supplier_trend(context["clean_df"], supplier_id)
+    predicted_demand, demand_direction, _ = predict_next_demand(supplier_trend_df)
     predicted_risk, predicted_risk_level, _ = predict_supplier_future_risk(metric_row, trend_df)
+    current_demand = float(supplier_trend_df["total_quantity"].iloc[-1]) if not supplier_trend_df.empty else 0
     demand_delta_color = "normal" if demand_direction in {"Increasing", "Decreasing"} else "off"
     demand_delta = f"+ {demand_direction}" if demand_direction == "Increasing" else f"- {demand_direction}" if demand_direction == "Decreasing" else demand_direction
-    s1, s2, s3, s4 = st.columns(4)
-    s1.metric("Predicted Demand", predicted_demand, demand_delta, delta_color=demand_delta_color)
+    s1, s2, s3, s4, s5 = st.columns(5)
+    s1.metric("Predicted Next Month Demand", predicted_demand, demand_delta, delta_color=demand_delta_color)
     s2.metric("Future Risk", predicted_risk_level, f"{predicted_risk}/100")
     s3.metric("Avg Feedback", f"{avg_feedback}/5", f"{feedback_count} ratings")
     s4.metric("Current Score", f"{metric_row['supplier_rank_score']}/100")
+    s5.metric("Current Month Demand", f"{current_demand:,.0f}")
 
 
 def page_supplier_trend(db):
@@ -2308,20 +2487,29 @@ def page_supplier_trend(db):
         )
 
     st.subheader("Current Trending Products")
-    ui_dataframe(safe_metric_table(current_products, ["product_name", "search_volume", "sales_count", "growth_rate", "trend_score"]), width="stretch")
+    ui_dataframe(
+        format_product_trend_display(
+            safe_metric_table(current_products, ["product_name", "search_volume", "sales_count", "growth_rate", "trend_score"])
+        ),
+        width="stretch",
+    )
     st.subheader("Future Product Trend Prediction")
     ui_dataframe(
-        safe_metric_table(
-            future_products,
-            ["product_name", "current_trend_score", "recent_growth_rate", "current_sales_count", "predicted_next_trend_score", "trend_direction", "trend_score_change", "prediction_reason"],
+        format_product_trend_display(
+            safe_metric_table(
+                future_products,
+                ["product_name", "trend_score", "growth_rate", "sales_count", "predicted_next_trend_score", "trend_direction", "trend_score_change", "prediction_reason"],
+            )
         ),
         width="stretch",
     )
     st.subheader("Predicted Downtrend Products")
     ui_dataframe(
-        safe_metric_table(
-            downtrend_products,
-            ["product_name", "current_trend_score", "recent_growth_rate", "predicted_next_trend_score", "trend_direction", "trend_score_change", "prediction_reason"],
+        format_product_trend_display(
+            safe_metric_table(
+                downtrend_products,
+                ["product_name", "trend_score", "growth_rate", "predicted_next_trend_score", "trend_direction", "trend_score_change", "prediction_reason"],
+            )
         ),
         width="stretch",
     )
@@ -2334,6 +2522,7 @@ def page_supplier_future_prediction(db):
         return
 
     category = context["category"]
+    supplier_id = context["supplier_id"]
     metric_row = context["metric_row"]
     trend_df = context["trend_df"]
 
@@ -2348,7 +2537,8 @@ def page_supplier_future_prediction(db):
         st.info("No monthly trend data is available for this category.")
 
     st.subheader("Future Prediction")
-    predicted_demand, demand_direction, demand_reason = predict_next_demand(trend_df)
+    supplier_trend_df = monthly_supplier_trend(context["clean_df"], supplier_id)
+    predicted_demand, demand_direction, demand_reason = predict_next_demand(supplier_trend_df)
     predicted_risk, predicted_risk_level, risk_reason = predict_supplier_future_risk(metric_row, trend_df)
     p1, p2, p3 = st.columns(3)
     p1.metric("Predicted Next Demand", predicted_demand)
@@ -2885,11 +3075,11 @@ def page_user_home(db):
                 c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([1, 1.4, 1, 1, 1, 1, 1, 0.8, 0.5])
                 c1.write(str(row["supplier"]))
                 c2.write(str(row["product_category"]))
-                c3.write(f"{row.get('final_rating', 0)}/5")
+                c3.write(f"{fmt_number(row.get('final_rating', 0))}/5")
                 c4.write(str(row.get("risk_level", "")))
-                c5.write(f"{row.get('supplier_rank_score', 0)}/100")
-                c6.write(f"{row.get('avg_delay', 0)} days")
-                c7.write(row.get("avg_unit_price", 0))
+                c5.write(f"{fmt_number(row.get('supplier_rank_score', 0))}/100")
+                c6.write(f"{fmt_number(row.get('avg_delay', 0))} days")
+                c7.write(fmt_number(row.get("avg_unit_price", 0)))
                 if c8.button("Select", key=f"home_select_{row['supplier']}_{row['product_category']}"):
                     save_selected_supplier(db, username, row, "home_search")
                     st.success(f"Selected {row['supplier']} for {row['product_category']}.")
@@ -2934,10 +3124,10 @@ def page_user_home(db):
             fc1, fc2, fc3, fc4, fc5, fc6, fc7, fc8 = st.columns([1, 1.4, 1, 1, 1, 1, 0.9, 0.5])
             fc1.write(str(row.get("supplier")))
             fc2.write(str(row.get("product_category")))
-            fc3.write(f"{row.get('final_score', 0)}/100")
-            fc4.write(f"{row.get('final_rating', 0)}/5")
+            fc3.write(f"{fmt_number(row.get('final_score', 0))}/100")
+            fc4.write(f"{fmt_number(row.get('final_rating', 0))}/5")
             fc5.write(str(row.get("risk_level", "")))
-            fc6.write(row.get("avg_unit_price", 0))
+            fc6.write(fmt_number(row.get("avg_unit_price", 0)))
             if fc7.button("Select", key=f"home_reselect_{row.get('supplier')}_{row.get('product_category')}"):
                 save_selected_supplier(db, username, row, "favourite_reselect")
                 st.success(f"Selected {row.get('supplier')} for {row.get('product_category')}.")
@@ -3470,12 +3660,11 @@ def render_app():
             page = st.session_state["supplier_page"]
         else:
             st.markdown('<div class="sidebar-role-badge">👤 Procurement Workspace<small>Discover, rate and manage suppliers</small></div>', unsafe_allow_html=True)
-            user_pages = ["Home", "Supplier Recommendation", "Risk Analysis", "Rate Supplier", "My History"]
+            user_pages = ["Home", "Supplier Recommendation", "Rate Supplier", "My History"]
             user_icons = {"Home": "⌂", "Supplier Recommendation": "✦", "Risk Analysis": "◉", "Rate Supplier": "★", "My History": "◷"}
             user_desc = {
                 "Home": "Your supplier intelligence hub",
                 "Supplier Recommendation": "AI-ranked supplier shortlist",
-                "Risk Analysis": "Analyze supplier risk and drivers",
                 "Rate Supplier": "Share performance feedback",
                 "My History": "Saved suppliers & activity",
             }
@@ -3516,8 +3705,6 @@ def render_app():
         page_user_home(db)
     elif page == "Supplier Recommendation":
         page_find_supplier(db)
-    elif page == "Risk Analysis":
-        page_risk_analysis(db)
     elif page == "Rate Supplier":
         page_rate_supplier(db)
     elif page == "My History":

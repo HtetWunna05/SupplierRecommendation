@@ -1,0 +1,209 @@
+[
+  {
+    "_id": "6a7de19ad55e1c5360290cbe",
+    "action": "raw_data_appended",
+    "actor": "admin",
+    "details": {
+      "inserted": 1000,
+      "skipped_duplicates": 0
+    },
+    "created_at": "2026-08-13 15:24:10.043000"
+  },
+  {
+    "_id": "6a7de19bd55e1c5360290cbf",
+    "action": "raw_data_appended",
+    "actor": "admin",
+    "details": {
+      "inserted": 0,
+      "skipped_duplicates": 1000
+    },
+    "created_at": "2026-08-13 15:24:11.222000"
+  },
+  {
+    "_id": "6a7de1e9d55e1c5360290cc0",
+    "action": "product_trends_updated",
+    "actor": "admin",
+    "details": {
+      "rows": 90,
+      "categories": 5
+    },
+    "created_at": "2026-08-13 15:25:29.637000"
+  },
+  {
+    "_id": "6a7de1f9d55e1c536029113f",
+    "action": "cleaning_completed",
+    "actor": "admin",
+    "details": {
+      "records": 1000,
+      "quality_score": 98.2
+    },
+    "created_at": "2026-08-13 15:25:45.742000"
+  },
+  {
+    "_id": "6a7de1ffd55e1c5360291140",
+    "action": "product_trend_cleaning_completed",
+    "actor": "admin",
+    "details": {
+      "records": 90,
+      "quality_score": 100.0
+    },
+    "created_at": "2026-08-13 15:25:51.631000"
+  },
+  {
+    "_id": "6a7de228d55e1c5360291141",
+    "action": "supplier_data_deleted",
+    "actor": "admin",
+    "details": {
+      "backup_confirmed": true
+    },
+    "created_at": "2026-08-13 15:26:32.200000"
+  },
+  {
+    "_id": "6a7de233d55e1c5360291142",
+    "action": "product_trend_data_deleted",
+    "actor": "admin",
+    "details": {
+      "backup_confirmed": true
+    },
+    "created_at": "2026-08-13 15:26:43.826000"
+  },
+  {
+    "_id": "6a7de249d55e1c5360291143",
+    "action": "product_trends_updated",
+    "actor": "admin",
+    "details": {
+      "rows": 90,
+      "categories": 5
+    },
+    "created_at": "2026-08-13 15:27:05.747000"
+  },
+  {
+    "_id": "6a7de256d55e1c5360291144",
+    "action": "raw_data_appended",
+    "actor": "admin",
+    "details": {
+      "inserted": 1000,
+      "skipped_duplicates": 0
+    },
+    "created_at": "2026-08-13 15:27:18.997000"
+  },
+  {
+    "_id": "6a7de258d55e1c5360291145",
+    "action": "raw_data_appended",
+    "actor": "admin",
+    "details": {
+      "inserted": 0,
+      "skipped_duplicates": 1000
+    },
+    "created_at": "2026-08-13 15:27:20.296000"
+  },
+  {
+    "_id": "6a7de3b2d55e1c53602915c4",
+    "action": "cleaning_completed",
+    "actor": "admin",
+    "details": {
+      "records": 1000,
+      "quality_score": 98.2
+    },
+    "created_at": "2026-08-13 15:33:06.447000"
+  },
+  {
+    "_id": "6a7de3bbd55e1c5360291a43",
+    "action": "cleaning_completed",
+    "actor": "admin",
+    "details": {
+      "records": 1000,
+      "quality_score": 98.2
+    },
+    "created_at": "2026-08-13 15:33:15.939000"
+  },
+  {
+    "_id": "6a7de3c0d55e1c5360291a44",
+    "action": "product_trend_cleaning_completed",
+    "actor": "admin",
+    "details": {
+      "records": 90,
+      "quality_score": 100.0
+    },
+    "created_at": "2026-08-13 15:33:20.933000"
+  },
+  {
+    "_id": "6a7de469d55e1c5360291a46",
+    "action": "account_created",
+    "actor": "user1",
+    "details": {
+      "role": "user",
+      "supplier_id": null
+    },
+    "created_at": "2026-08-13 15:36:09.176000"
+  },
+  {
+    "_id": "6a7de4b5d55e1c5360291a48",
+    "action": "supplier_verification_code_generated",
+    "actor": "admin",
+    "details": {
+      "supplier_id": "S1"
+    },
+    "created_at": "2026-08-13 15:37:25.735000"
+  },
+  {
+    "_id": "6a7de4bcd55e1c5360291a4b",
+    "action": "account_created",
+    "actor": "sup1",
+    "details": {
+      "role": "supplier",
+      "supplier_id": "S1"
+    },
+    "created_at": "2026-08-13 15:37:32.572000"
+  },
+  {
+    "_id": "6a7de50fd55e1c5360291a4d",
+    "action": "supplier_account_approved",
+    "actor": "admin",
+    "details": {
+      "username": "sup1",
+      "supplier_id": "S1"
+    },
+    "created_at": "2026-08-13 15:38:55.515000"
+  },
+  {
+    "_id": "6a7de53ed55e1c5360291a50",
+    "action": "supplier_selected_from_home_search",
+    "actor": "user1",
+    "details": {
+      "username": "user1",
+      "supplier": "S1",
+      "product_category": "Electronics",
+      "final_score": 63.64225284090909,
+      "risk_level": "Medium",
+      "status": "selected",
+      "source": "home_search",
+      "created_at": "2026-08-13 15:39:42.372000",
+      "_id": "6a7de53ed55e1c5360291a4f"
+    },
+    "created_at": "2026-08-13 15:39:42.373000"
+  },
+  {
+    "_id": "6a7de53fd55e1c5360291a51",
+    "action": "favourite_supplier_saved",
+    "actor": "user1",
+    "details": {
+      "supplier": "S1",
+      "category": "Electronics",
+      "source": "home_search"
+    },
+    "created_at": "2026-08-13 15:39:43.910000"
+  },
+  {
+    "_id": "6a7de575d55e1c5360291a57",
+    "action": "supplier_rated",
+    "actor": "user1",
+    "details": {
+      "supplier": "S1",
+      "category": "Electronics",
+      "rating": 5,
+      "event_type": "good service"
+    },
+    "created_at": "2026-08-13 15:40:37.106000"
+  }
+]
